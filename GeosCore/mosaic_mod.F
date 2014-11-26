@@ -31,20 +31,6 @@
       PRIVATE :: WATER_VAPOR
       PRIVATE :: SET_MOSAIC_AIR
 !
-!
-! PRIVATE TYPES:
-!
-      !=================================================================
-      ! MODULE VARIABLES:
-      !
-      ! Arrays
-      !
-      ! X                  : ???
-      !=================================================================
-
-      ! Arrays
-
-!
 ! !REMARKS:
 !  Original Author:
 !**********************************************************************************  
@@ -130,6 +116,30 @@
 !--------------------------------------------------------------------------------------------
 !  Original v4.1a MOSAIC implementation into GEOS-Chem by
 !  Sebastian D. Eastham and Jessica Kunke (SDE, JK, 2014-11-13)
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !DEFINED PARAMETERS:
+!
+!
+! PRIVATE TYPES:
+!
+      !=================================================================
+      ! MODULE VARIABLES:
+      !
+      ! Arrays
+      !
+      ! X                  : ???
+      !=================================================================
+
+      ! Arrays
+
+      !=================================================================
+      ! MODULE ROUTINES -- follow below the "CONTAINS" statement 
+      !=================================================================
+      CONTAINS
+!
 !EOC
 !------------------------------------------------------------------------------
 !                  GEOS-Chem Global Chemical Transport Model                  !
@@ -459,8 +469,8 @@
 
          ! Run MOSAIC
             CALL aerchemistry(0, 0, dt_sec,                             !intent-ins
-    &       jaerosolstate, dp_wet_a,                                 !intent-inouts
-    &       cair_mol_m3, cair_mol_cc, aH2O_a, gam_ratio, iter_MESA ) !intent-outs
+     &       jaerosolstate, dp_wet_a,                                 !intent-inouts
+     &       cair_mol_m3, cair_mol_cc, aH2O_a, gam_ratio, iter_MESA ) !intent-outs
 
          ! Save data back into tracer array
          ! STT wants kg

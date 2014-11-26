@@ -456,6 +456,8 @@
       !=================================================================
       ! increase NNPAR and NEMPARA an extra amount (hotp 7/31/09)
 #if   defined( TOMAS )
+! AEROSOL OPTIONS
+! TOMAS
 # if    defined( TOMAS40 )
       INTEGER, PARAMETER :: NNPAR   = 430   ! For TOMAS40 (sfarina 6/11/13)
 # elif  defined( TOMAS15 )
@@ -465,9 +467,13 @@
 # else
       INTEGER, PARAMETER :: NNPAR   = 340   ! For TOMAS (win, bmy, sfarina 6/11/13)
 # endif
+! END TOMAS
 #elif defined( APM )
+! APM
       INTEGER, PARAMETER :: NNPAR   = 154   ! For APM (G. Luo, 3/8/11)
+! END APM
 #elif defined( MOSAIC )
+! MOSAIC
       ! By default, MOSAIC removes 14 tracers and replaces them with
       ! binned aerosols
 #if defined ( SOAupdate )
@@ -475,22 +481,27 @@
 #else
       INTEGER, PARAMETER :: NAERMOS = 14
 #endif
+
 #if defined ( MOSAIC4 )
+! MOSAIC4
       INTEGER, PARAMETER :: NBINMOS = 4
 #if defined ( SOAupdate )
       INTEGER, PARAMETER :: NNPAR = 199 ! 4 bins, 22 per bin (SDE, 2014-11-13)
 #else
       INTEGER, PARAMETER :: NNPAR = 167 ! 4 bins, 14 per bin (SDE, 2014-11-13)
 #endif
-#else
+! END MOSAIC4
 #elif defined ( MOSAIC8 )
+! MOSAIC8
       INTEGER, PARAMETER :: NBINMOS = 8
 #if defined ( SOAupdate )
       INTEGER, PARAMETER :: NNPAR = 287 ! 8 bins, 22 per bin (SDE, 2014-11-13)
 #else
       INTEGER, PARAMETER :: NNPAR = 223 ! 8 bins, 14 per bin (SDE, 2014-11-13)
 #endif
+! END MOSAIC8
 #else
+! BULK MOSAIC
       ! Bulk MOSAIC
       INTEGER, PARAMETER :: NBINMOS = 1
 #if defined ( SOAupdate )
@@ -498,7 +509,9 @@
 #else
       INTEGER, PARAMETER :: NNPAR = 133 ! ~42 additional (SDE, 2014-11-13)
 #endif
+! END BULK MOSAIC
 #endif
+! END AEROSOL OPTIONS
 #else
       INTEGER, PARAMETER :: NNPAR   = 125   ! For non-TOMAS simulations
 #endif

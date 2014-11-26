@@ -61,7 +61,10 @@ MOD   :=$(ROOT)/mod
 include $(ROOT)/Makefile_header.mk
 
 # List of source files
-SRC   :=$(wildcard *.F) $(wildcard *.F90)
+#SRC   :=$(wildcard *.F) $(wildcard *.F90)
+
+# We need to specialize this - only certain files are needed
+
 
 # Replace .F and .F90 extensions with *.o
 TMP   :=$(SRC:.F=.o)
@@ -103,8 +106,6 @@ help:
 ###                                                                         ###
 ###############################################################################
 
-isoropiaIIcode.o:  isoropiaIIcode.F  isrpia.inc
-	$(F90) $(R8) -c $<
 #
 # Object lists
 #

@@ -1,2 +1,0 @@
-	    write(lun,'(a)') '*** only non-zero values are shown ***'
-	end if
