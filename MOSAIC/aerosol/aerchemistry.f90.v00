@@ -1,0 +1,325 @@
+subroutine aerchemistry(it, t_out, t_in,                    & !intent-ins
+     jaerosolstate, dp_wet_a,                               & !intent-inouts
+     cair_mol_m3, cair_mol_cc, aH2O_a, gam_ratio, iter_MESA ) !intent-outs
+
+  use module_data_mosaic_kind, only: r8
+  use module_data_mosaic_main, only: &
+       cair_molm3, cnn, m_partmc_mosaic, ntot_used, & 
+       pr_atm, rh, te
+  use module_data_mosaic_aero, only : msectional, msize_framework, &
+     naer, nbin_a_max, ngas_volatile, nsalt
+  use module_sect_iface, only: sectional_interface_1
+  use module_mosaic_box, only: mosaic_box_aerchemistry
+
+  implicit none
+
+  !Subroutine arguments
+  integer,  intent(in)  :: it
+  real(r8), intent(in) :: t_out, t_in
+
+
+  integer, intent(inout),  dimension(nbin_a_max) :: jaerosolstate
+
+  integer,  intent(out),   dimension(nbin_a_max) :: iter_MESA
+
+  real(r8), intent(inout), dimension(nbin_a_max) :: dp_wet_a
+
+  real(r8), intent(out) :: cair_mol_m3,cair_mol_cc
+  real(r8), intent(out), dimension(nbin_a_max) :: aH2O_a,gam_ratio
+
+  !Local variables
+  character(len=250) :: infile, tmp_str
+  logical :: debug_mosaic = .true.
+  logical :: zero_water_flag, flag_itr_kel
+  integer :: it_mosaic
+  integer :: mcall_load_mosaic_parameters, mcall_print_aer_in
+  integer :: jASTEM_fail
+  integer :: unitn, ibin, igas, iaer, istate, iaer_in,istate_in,ibin_in
+  integer, dimension(nbin_a_max) :: jaerosolstate_bgn, jhyst_leg
+
+  real(r8) :: dtchem, RH_pc, aH2O, P_atm, T_K, aer_tmp
+  real(r8), dimension(naer,3,nbin_a_max) :: aer
+  real(r8), dimension(ngas_volatile)     :: gas
+  real(r8), dimension(ngas_volatile)     :: gas_avg  ! average gas conc. over dtchem time step (nmol/m3)
+  real(r8), dimension(ngas_volatile)     :: gas_netprod_otrproc
+            ! gas_netprod_otrproc = gas net production rate from other processes
+            !    such as gas-phase chemistry and emissions (nmol/m3/s)
+            ! NOTE - currently in the mosaic box model, gas_netprod_otrproc is set to zero for all
+            !        species, so mosaic_aerchemistry does not apply production and condensation together
+  real(r8), dimension(nbin_a_max)        :: num_a, water_a, Dp_dry_a, sigmag_a
+  real(r8), dimension(nbin_a_max)        :: mass_dry_a_bgn,mass_dry_a,dens_dry_a_bgn
+  real(r8), dimension(nbin_a_max)        :: dens_dry_a,water_a_hyst
+
+  real(r8), allocatable, dimension(:)    :: cnn_sv1 !BSINGH - 05/28/2013(RCE updates)
+
+  dtchem = t_out - t_in
+  !BSINGH - 05/28/2013(RCE updates)
+  if ( (m_partmc_mosaic <= 0) .and. &
+       (msize_framework == msectional) ) then
+     allocate( cnn_sv1(1:ntot_used) )
+     cnn_sv1(1:ntot_used) = cnn(1:ntot_used)
+  end if
+  !BSINGH - 05/28/2013(RCE updates ENDS)
+
+  
+  it_mosaic   = it
+  RH_pc       = RH                                    ! RH(%)
+  aH2O        = 0.01_r8*RH_pc                             ! aH2O (aerosol water activity)
+  P_atm       = pr_atm                                ! P(atm)
+  T_K         = te                                      ! T(K)
+  cair_mol_m3 = cair_molm3                      ! air conc in mol/m3
+  cair_mol_cc = cair_mol_m3*1.e-6               ! air conc in mol/cc
+
+  ! for box model
+  !    on first time step, call load_mosaic_parameters and call print_aer twice
+  !    after first time step, just call print_aer once
+  ! for cam5 or wrfchem, this routine will loop over multiple grid boxes
+  !    call load_mosaic_parameters for first grid box (and all time steps)
+  !    call print_aer never
+  if (it_mosaic <= 1) then
+     mcall_load_mosaic_parameters = 1
+     mcall_print_aer_in = 2
+  else
+     mcall_load_mosaic_parameters = 0
+     mcall_print_aer_in = 1
+  end if
+
+  ! map variables from cnn arrays to mosaic aerchem working arrays
+  call map_mosaic_species_BOX( 0, cnn, aer, gas, jhyst_leg, num_a, Dp_dry_a,      &
+            sigmag_a, water_a, cair_mol_m3 )
+
+  !BSINGH - Following block is introduced to reproduce errors Mosaic
+  !         model encounters in other models (CAM,WRF etc.). This block repopulate
+  !         all the information which is going into the mosaic box (intent-ins and
+  !         intent-inouts). It is a binary read to preserve the accuracy.
+  
+  if(debug_mosaic) then
+     !Read a binary file which has all the inputs to the mosaic box
+     !and stop the model
+     
+     unitn = 101
+!     infile = 'mosaic_error_4.bin'
+     infile = 'mosaic_error_0.bin'
+     open( unitn, file=trim(infile), status='old', form='unformatted', CONVERT = 'BIG_ENDIAN' )
+     
+     read(unitn)aH2O
+     read(unitn)T_K
+     read(unitn)P_atm
+     read(unitn)RH_pc
+     read(unitn)dtchem
+     
+
+     do ibin = 1, nbin_a_max
+        read(unitn)num_a(ibin),water_a(ibin),Dp_dry_a(ibin),        &
+             sigmag_a(ibin),dp_wet_a(ibin),jhyst_leg(ibin),          &
+             jaerosolstate(ibin)
+     end do
+     
+     
+     do igas = 1, ngas_volatile
+        read(unitn) gas(igas)
+     enddo
+     
+     do ibin = 1, nbin_a_max
+        do istate = 1, 3
+           do iaer = 1 , naer
+              read(unitn)iaer_in,istate_in,ibin_in, aer_tmp
+              aer(iaer_in,istate_in,ibin_in) = aer_tmp                    
+           end do
+        end do
+     end do
+     close(unitn)
+  endif
+  !BSINGH -----xxx ENDS reading file for debugging mosaic xxxx----
+  
+
+
+  ! calculate gas-aerosol exchange over timestep dtchem
+  ! (during this calculation there is no transfer of particles between bins)
+
+  !BSINGH - flag_itr_kel becomes true when kelvin iteration in mdofule_mosaic_ext.F90 are greater then 100
+  flag_itr_kel = .false.
+  !BSINGH - zero_water_flag becomes .true. if water is zero in liquid phase
+  zero_water_flag = .false. 
+ ! aH2O = 0.999 ! min(0.99, aH2O)	! RAZ 2/14/2014
+ ! RH_pc = 99.9
+  gas_avg = 0.0
+  gas_netprod_otrproc = 0.0
+
+  call mosaic_box_aerchemistry(it_mosaic,    aH2O,               T_K,            &!Intent-ins
+       P_atm,                  RH_pc,        dtchem,                             &
+       mcall_load_mosaic_parameters,         mcall_print_aer_in, sigmag_a,       &
+       jaerosolstate,          aer,                                              &!Intent-inouts
+       num_a,                  water_a,      gas,                                &
+       gas_avg,                gas_netprod_otrproc,              Dp_dry_a,       &
+       dp_wet_a,               jhyst_leg,    zero_water_flag,    flag_itr_kel,   &
+       mass_dry_a_bgn,         mass_dry_a,                                       &!Intent-outs
+       dens_dry_a_bgn,         dens_dry_a,   water_a_hyst,       aH2O_a,         &
+       gam_ratio,              jaerosolstate_bgn,                jASTEM_fail,    &
+       iter_MESA                                                                 )
+
+  if(jASTEM_fail > 0 .or. zero_water_flag) then
+     !Write error message and stop the model.
+     write(tmp_str,*)'Error in Mosaic,jASTEM_fail= ',jASTEM_fail,' zero_water_flag: ',zero_water_flag
+     print*, tmp_str
+     print*, 'Fortran Stop in aerosol/aerchemistry.f90'   
+     stop
+  endif
+
+  ! map variables back to cnn arrays
+  call map_mosaic_species_BOX( 1, cnn, aer, gas, jhyst_leg, num_a, Dp_dry_a,      &
+       sigmag_a, water_a, cair_mol_m3 )
+
+  ! for sectional framework, calculate
+  !    transfer of particles betweens due to growth/shrinkage
+  !    new particle nucleation (optional)
+  !    particle coagulation (optional)
+  if( (m_partmc_mosaic <= 0) .and.  (msize_framework == msectional)) then !BSINGH - 05/28/2013(RCE updates)
+  !B   call sectional_interface_1( dtchem,cnn_sv1,jaerosolstate,mass_dry_a_bgn,    & !BALLI----sort it later
+  !B        mass_dry_a,dens_dry_a_bgn,dens_dry_a,water_a_hyst,jaerosolstate_bgn,   &
+  !B        it_mosaic,cair_mol_m3,cair_mol_cc,mw_aer_mac,dens_aer_mac,mw_comp_a)
+  !B   deallocate( cnn_sv1 )!BSINGH - 05/28/2013(RCE updates)
+     !     else if (msize_framework == mmodal) then
+     ! for modal framework, do similar calculations
+     ! (not yet implemented)
+  end if
+
+
+  return
+end subroutine aerchemistry
+
+
+
+
+  !***********************************************************************
+  ! maps cnn to and from MOSAIC arrays: gas and aer
+  !
+  ! author: Rahul A. Zaveri
+  ! update: nov 2001
+  !-----------------------------------------------------------------------
+  subroutine map_mosaic_species_BOX( imap, cnn, aer, gas, jhyst_leg, num_a, Dp_dry_a,  &
+       sigmag_a, water_a, cair_mol_m3 )
+
+    use module_data_mosaic_main, only: r8,naer_tot,ngas_max,m_partmc_mosaic,       & !Parameters
+         ntot_max,                                                                 & !TBD
+         avogad,kh2so4,    khno3,khcl,knh3,kmsa,karo1,karo2,kalk1,kole1,kapi1,     & !TBD
+         kapi2,klim1,klim2,knum_a,kdpdry_a,piover6,ksigmag_a,kjhyst_a,kwater_a       !TBD
+
+    use module_data_mosaic_aero, only: nbin_a_max,naer,ngas_volatile,jtotal,       & !Parameters
+         nbin_a,                                                                   & !Input
+         ih2so4_g,ihno3_g,ihcl_g,inh3_g,imsa_g,iaro1_g,iaro2_g,ialk1_g,iole1_g,    &
+         iapi1_g,iapi2_g,ilim1_g,ilim2_g        !TBD
+
+
+    implicit none
+
+    ! subr arguments
+    integer, intent(in) :: imap
+    integer, intent(inout), dimension(nbin_a_max) :: jhyst_leg
+
+    real(r8), intent(inout), dimension(ntot_max) :: cnn
+    real(r8), intent(inout), dimension(nbin_a_max) :: num_a, Dp_dry_a, sigmag_a, water_a
+    real(r8), intent(inout), dimension(ngas_volatile) :: gas
+    real(r8), intent(inout), dimension(naer,3,nbin_a_max) :: aer
+
+    ! local variables
+    integer ibin, iaer, noffset
+    real(r8) :: cair_mol_m3
+    real(r8) :: conv1, conv2, cnva1, cnva2
+
+
+
+
+    ! define conversion factors
+    ! BOX
+    conv1 = 1.e15/avogad    ! converts (molec/cc) to (nmol/m^3)
+    conv2 = 1./conv1                ! converts (nmol/m^3) to (molec/cc)
+
+    cnva1 = 1.e3            ! converts umol/m^3  to nmol/m^3 (or ug/m^3 to ng/m^3)
+    cnva2 = 1./cnva1                ! converts nmol/m^3) to umol/m^3 (or ng/m^3 to ug/m^3)
+
+
+    if(imap.eq.0)then    ! map cnn (molec/cc) into stot (nmol/m^3)
+       gas(:) = 0.0_r8
+       aer(:,:,:) = 0.0_r8
+
+       ! gas
+       gas(ih2so4_g) = cnn(kh2so4)*conv1    ! nmol/m^3
+       gas(ihno3_g)  = cnn(khno3)*conv1
+       gas(ihcl_g)   = cnn(khcl)*conv1
+       gas(inh3_g)   = cnn(knh3)*conv1
+       gas(imsa_g)   = cnn(kmsa)*conv1
+       gas(iaro1_g)  = cnn(karo1)*conv1
+       gas(iaro2_g)  = cnn(karo2)*conv1
+       gas(ialk1_g)  = cnn(kalk1)*conv1
+       gas(iole1_g)  = cnn(kole1)*conv1
+       gas(iapi1_g)  = cnn(kapi1)*conv1
+       gas(iapi2_g)  = cnn(kapi2)*conv1
+       gas(ilim1_g)  = cnn(klim1)*conv1
+       gas(ilim2_g)  = cnn(klim2)*conv1
+       
+       !print*,'BALLI:in-map:', gas(inh3_g),cnn(knh3),conv1,knh3
+       ! aerosol
+       !BSINGH - 05/28/2013(RCE updates)
+       if (m_partmc_mosaic <= 0) then
+        ! do this only for mosaic box-model (skip for partmc_mosaic)
+          !BSINGH - 05/28/2013(RCE updates ENDS)
+          do ibin = 1, nbin_a
+             
+             noffset = ngas_max + naer_tot*(ibin - 1)
+             num_a(ibin)      = cnn(noffset + knum_a)                  ! #/cc
+             Dp_dry_a(ibin)     = cnn(noffset + kdpdry_a) * 1.e-4              ! cm (dry diameter)
+             sigmag_a(ibin)   = cnn(noffset + ksigmag_a)
+             jhyst_leg(ibin)  = INT(cnn(noffset + kjhyst_a)+0.01)
+             water_a(ibin)    = cnn(noffset + kwater_a)                        ! kg/m^3
+             
+             do iaer = 1, naer
+                aer(iaer,jtotal,ibin) = cnn(noffset+kwater_a+iaer)*cnva1       ! nmol/m^3
+             enddo
+             
+          enddo
+        endif!BSINGH - 05/28/2013(RCE updates)
+
+    else                 ! map stot (nmol/m^3) back into cnn (umol/m^3)
+       ! gas
+       cnn(kh2so4)  = gas(ih2so4_g)*conv2
+       cnn(khno3)   = gas(ihno3_g)*conv2
+       cnn(khcl)    = gas(ihcl_g)*conv2
+       cnn(knh3)    = gas(inh3_g)*conv2
+       cnn(kmsa)    = gas(imsa_g)*conv2
+       cnn(karo1)   = gas(iaro1_g)*conv2
+       cnn(karo2)   = gas(iaro2_g)*conv2
+       cnn(kalk1)   = gas(ialk1_g)*conv2
+       cnn(kole1)   = gas(iole1_g)*conv2
+       cnn(kapi1)   = gas(iapi1_g)*conv2
+       cnn(kapi2)   = gas(iapi2_g)*conv2
+       cnn(klim1)   = gas(ilim1_g)*conv2
+       cnn(klim2)   = gas(ilim2_g)*conv2
+
+       ! aerosol
+       !BSINGH - 05/28/2013(RCE updates)
+       if (m_partmc_mosaic <= 0) then
+          ! do this only for mosaic box-model (skip for partmc_mosaic)
+          !BSINGH - 05/28/2013(RCE updates ENDS)
+          do ibin = 1, nbin_a
+             
+             noffset = ngas_max + naer_tot*(ibin - 1)
+             cnn(noffset + knum_a)   = num_a(ibin)
+             cnn(noffset + kdpdry_a)  = Dp_dry_a(ibin) * 1.e4  ! dry diameter (micron)
+             cnn(noffset + kjhyst_a) = float(jhyst_leg(ibin))
+             cnn(noffset + kwater_a) = water_a(ibin)           ! kg/m^3
+             
+             do iaer = 1, naer
+                cnn(noffset+kwater_a+iaer) = aer(iaer,jtotal,ibin)*cnva2       ! molec/cc
+             enddo
+             
+          enddo
+       endif!BSINGH - 05/28/2013(RCE updates)
+
+    endif
+
+    return
+  end subroutine map_mosaic_species_BOX
+
+
+

@@ -1,0 +1,5 @@
+# qak
+set verbose
+cp -p sectw1d.inp fort.172w1d output/sectw1d.fullout.txt  sectwd.sv03
+cp -p sectw1e.inp fort.172w1e output/sectw1e.fullout.txt  sectwd.sv03
+unset verbose

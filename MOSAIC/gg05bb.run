@@ -1,0 +1,31 @@
+# junkrungg5b
+set verbose
+
+echo "start run gg05bb" >! gg05bb.timing
+date                    >> gg05bb.timing
+
+/bin/rm  fort.17? fort.18? fort.19?
+/bin/rm  gg05bb.bm17? gg05bb.bm18?  gg05bb.bm19?  
+
+date
+#mosaic.fast.x    << eoi
+#mosaic.x.120728a << eoi
+ mosaic.x         << eoi
+gg05bb.inp
+eoi
+date
+
+echo "  end run gg05bb" >> gg05bb.timing
+date                    >> gg05bb.timing
+
+/bin/cp -p fort.183 gg05bb.bm183 
+/bin/cp -p fort.184 gg05bb.bm184 
+/bin/cp -p fort.185 gg05bb.bm185 
+/bin/cp -p fort.186 gg05bb.bm186 
+/bin/cp -p fort.188 gg05bb.bm188 
+/bin/cp -p fort.190 gg05bb.bm190
+
+goto the_end
+
+the_end:
+unset verbose

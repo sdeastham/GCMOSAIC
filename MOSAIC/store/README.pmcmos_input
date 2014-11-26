@@ -1,0 +1,102 @@
+# README.pmcmos_input
+#
+#set verbose
+
+#goto the_start
+
+#----------------------------------------------------------------------
+# state variables
+#	temp - from temp.dat
+#	pres - fixed, single input
+#	relhum - qvapor is fixed (single input for initial relhum)
+#	         and relhum = f( temp, pres, qvapor )
+#	pbl height - from height.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/temp.dat ; echo " " ; more pmcmos_input/temp.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/height.dat ; echo " " ; more pmcmos_input/height.dat
+
+
+#----------------------------------------------------------------------
+# gases
+#	initial - from gas_init.dat
+#	background - from gas_back.dat
+#	emissions - from gas_emit.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/gas_init.dat ; echo " " ; more pmcmos_input/gas_init.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/gas_back.dat ; echo " " ; more pmcmos_input/gas_back.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/gas_emit.dat ; echo " " ; more pmcmos_input/gas_emit.dat
+
+#----------------------------------------------------------------------
+# aerosols
+#	initial - 
+#	    size distrib - from aero_init_dist.dat (contains size distrib info
+#	                   and name of composition file)
+#	    composition - from aero_init_comp.dat
+#
+#	background - 
+#	    top level - from aero_back.dat (contains time and scale-factor info
+#	                and name of size-distrib file)
+#	    size distrib - from aero_back_dist.dat (contains size distrib info
+#	                   and name of composition file)
+#	    composition - from aero_back_comp.dat (contains composition info)
+#
+#	emissions - 
+#	    top level - from aero_emit.dat (contains time and scale-factor info
+#	                and name of size-distrib file)
+#	    size distrib - from aero_emit_dist.dat (contains size distrib info,
+#	                   including number emissions rate, 
+#	                   and names of various composition files)
+#	    composition - from aero_emit_comp_xxxxx.dat (contains composition info)
+#
+#	emissions - 
+
+the_start:
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/aero_init_dist.dat ; echo " " ; more pmcmos_input/aero_init_dist.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/aero_init_comp.dat ; echo " " ; more pmcmos_input/aero_init_comp.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/aero_back.dat ; echo " " ; more pmcmos_input/aero_back.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/aero_back_dist.dat ; echo " " ; more pmcmos_input/aero_back_dist.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/aero_back_comp.dat ; echo " " ; more pmcmos_input/aero_back_comp.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/aero_emit.dat ; echo " " ; more pmcmos_input/aero_emit.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/aero_emit_dist.dat ; echo " " ; more pmcmos_input/aero_emit_dist.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/aero_emit_comp_cooking.dat ; echo " " ; more pmcmos_input/aero_emit_comp_cooking.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/aero_emit_comp_diesel.dat ; echo " " ; more pmcmos_input/aero_emit_comp_diesel.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/aero_emit_comp_gasol.dat ; echo " " ; more pmcmos_input/aero_emit_comp_gasol.dat
+
+echo " " ; echo " " ; echo "======================================================================"
+echo pmcmos_input/aero_emit_comp_pavedrd.dat ; echo " " ; more pmcmos_input/aero_emit_comp_pavedrd.dat
+
+#----------------------------------------------------------------------
+the_end:
+unset verbose
+exit
+ 
+ 
+qak

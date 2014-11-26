@@ -1,0 +1,89 @@
+#!/bin/csh
+#set echo verbose
+/usr/bin/clear
+
+#set compiler = pgi #pgi,lf95 [Change Make file accordingly]
+set compiler = lf95 #pgi,lf95 [Change Make file accordingly]
+
+source bScript_for_mosaic_ver1.csh $compiler
+
+
+set err_chk = 0 #flag whether error checking has been done or not(to avoid the use of elseif )
+if ( $compiler == 'lf95'  ) then
+    grep -- 'S:' outLog >& outError #Check for error
+    set err_chk = 1
+endif
+
+if ( $compiler == 'pgi'  ) then
+    grep -- '-S-' outLog >& outError #Check for error 
+    set error_out_pgi = `cat outError | wc -l`
+    if($error_out_pgi == 0) then
+	/bin/rm outError
+	grep -- '-F-' outLog >& outError #Check for error	
+    endif
+    set err_chk = 1
+endif
+
+if ( $err_chk == 0 ) then
+    echo 'please choose a valid compiler....exiting....'
+    exit
+endif
+
+
+set error_out = `cat outError | wc -l`
+if($error_out == 0) then
+    echo 'No Compile time errors'
+else
+    echo 'ERROR:Compile Time errors  ...exiting..'
+    cat outError
+    exit 1
+endif
+
+#Path to the output files from the original model run
+set path_to_ouput = '/dtemp/sing201/Mosiac/trials/8_lahey_best_run/output/'
+
+#File to compare
+set file_comp = '.bin001.txt'
+
+#For each test case
+foreach line (`cat b_test_case.txt`) #go through all the test cases mentioned in b_test_case.txt
+    echo '=============================================================================================='
+    echo '***Running case:'$line '***'
+    echo '=============================================================================================='
+    
+    /bin/rm b_inp.txt
+    printf "%s\n" "$line" >& b_inp.txt #Write to file
+    set substr = `echo $line | sed 's/.inp//'` #Get rid of .inp from the $line [BSINGH-10/02/2013- done this to build name of the output file]
+    #Remove output file
+    cd output
+    #/bin/rm $substr$file_comp
+    cd - #cd back
+    mosaic.x |& tee runlog
+    set error_run = `cat runlog | grep -i error| wc -l` #??? This is tested with lf95 compiler but not with pgi
+    if($error_run > 0) then
+	echo 'RUN time Error exiting.....'
+	exit 1
+	break
+    endif
+    
+    echo 'diff output...'
+    
+    
+
+    #rm diffOut
+    #diff `echo $path_to_ouput$substr$file_comp ./output/$substr$file_comp` >& diffOut
+    #set error = `cat diffOut | wc -l`
+    #echo 'Error:' $error
+    #if($error == 0) then
+#	echo 'No Difference in Output CASE:'$substr
+#    else
+#	echo 'ERROR::Difference in output from the code: CASE:'$substr   '  ...exiting..'
+#	exit 1
+#	break
+#    endif
+    
+    
+end
+
+echo '**Script ended successfully**'
+

@@ -1,0 +1,107 @@
+# junkdiffcc
+
+set base_dir = $cwd
+
+set this_dir = '/home/d37080/mosaic_box/mos31c'
+
+set otherdir = '/home/d37080/mosaic_box/mos31bn'
+set otherdir = '/home/d37080/mosaic_box/mos31b'
+
+set iflagaa = 1
+
+
+echo ' '
+echo 'comparing output files in'
+echo '    this_dir =' $this_dir
+if (! -e $this_dir) then
+    echo '*** this_dir is not a directory ***'
+    exit
+endif
+echo '    otherdir =' $otherdir
+if (! -e $otherdir) then
+    echo '*** otherdir is not a directory ***'
+    exit
+endif
+echo ' '
+
+
+
+#------------------------------------------------------------
+
+if ($iflagaa == 1 || $iflagaa == 3) then
+
+cd $this_dir
+
+foreach fname (  \
+aerosol/*.f90  \
+cloud/*.f90  \
+datamodules/*.f90  \
+gas/*.f90  \
+main/*.f90  \
+solver/*.f90  \
+)
+
+if ( -e $this_dir/$fname  &&  -e $otherdir/$fname ) then
+    diff  $this_dir/$fname  $otherdir/$fname  >  /dev/null
+    if ($status == 0) then
+        echo '           match ' $fname
+    else
+        echo '      **** DIFFS ' $fname
+    endif
+else if ( -e $this_dir/$fname ) then
+    echo 'missing otherdir ' $fname
+else if ( -e $otherdir/$fname ) then
+    echo 'missing this_dir ' $fname
+else
+    echo 'missing both_dir ' $fname
+endif
+
+end
+
+
+cd $base_dir
+
+endif
+echo ' '
+
+
+#------------------------------------------------------------
+
+if ($iflagaa == 2 || $iflagaa == 3) then
+
+cd $otherdir
+
+foreach fname (  \
+aerosol/*.f90  \
+cloud/*.f90  \
+datamodules/*.f90  \
+gas/*.f90  \
+main/*.f90  \
+solver/*.f90  \
+)
+
+if ( -e $this_dir/$fname  &&  -e $otherdir/$fname ) then
+    diff  $this_dir/$fname  $otherdir/$fname  >  /dev/null
+    if ($status == 0) then
+        echo '           match ' $fname
+    else
+        echo '      **** DIFFS ' $fname
+    endif
+else if ( -e $this_dir/$fname ) then
+    echo 'missing otherdir ' $fname
+else if ( -e $otherdir/$fname ) then
+    echo 'missing this_dir ' $fname
+else
+    echo 'missing both_dir ' $fname
+endif
+
+end
+
+
+cd $base_dir
+
+endif
+
+echo ' '
+
+#------------------------------------------------------------

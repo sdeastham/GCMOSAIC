@@ -68,7 +68,8 @@
 # (6) HEMCO/Extensions/    : HEMCO Extensions modules
 # (7) HEMCO/Interfaces/    : HEMCO Interface modules
 # (7) ISOROPIA/            : ISORROPIA aerosol thermodyn equilibrium module
-# (8) GeosCore/            : "Core" GEOS-Chem modules
+# (8) MOSAIC/              : MOSAIC aerosol T.E. and microphys module
+# (9) GeosCore/            : "Core" GEOS-Chem modules
 #
 # !REVISION HISTORY: 
 #  16 Sep 2009 - R. Yantosca - Initial version
@@ -146,6 +147,7 @@
 #                              HEMCO makes these obsolete.
 #  23 Sep 2014 - M. Sulprizio- Removed global_hno3_mod.F and global_no3_mod.F.
 #                              HEMCO makes these obsolete.
+#  14 Nov 2014 - S. D. Eastham-Added MOSAIC library
 #EOP
 #------------------------------------------------------------------------------
 #BOC
@@ -171,6 +173,7 @@ ISO   :=$(ROOT)/ISOROPIA
 LIB   :=$(ROOT)/lib
 KPP   :=$(ROOT)/KPP
 MOD   :=$(ROOT)/mod
+MOS   :=$(ROOT)/MOSAIC
 NCDF  :=$(ROOT)/NcdfUtil
 UTIL  :=$(ROOT)/GeosUtil
 
@@ -236,6 +239,7 @@ lib:                                               # Build all G-C libraries
 	@$(MAKE) libutil 
 	@$(MAKE) libhemco
 	@$(MAKE) libiso 			  
+	@$(MAKE) libmos 			  
 	@$(MAKE) libcore			  
 
 libcore: $(OBJ)                                    # Build code in GeosCore/
@@ -251,6 +255,9 @@ libhemco:
 
 libiso:                                            # Build code in ISOROPIA/
 	@$(MAKE) -C $(ISO)			  
+
+libmos:                                            # Build code in MOSAIC/
+	@$(MAKE) -C $(MOS)			  
 
 libkpp:                                            # Build code in KPP/
 	@$(MAKE) -C $(KPP)			  
@@ -289,6 +296,7 @@ realclean:                                         # Remove files everywhere
 	@$(MAKE) -C $(HEMCO) clean
 	@$(MAKE) -C $(HDR)   clean
 	@$(MAKE) -C $(ISO)   clean
+	@$(MAKE) -C $(MOS)   clean
 	@$(MAKE) -C $(KPP)   realclean
 	@$(MAKE) -C $(NCDF)  clean
 	@$(MAKE) -C $(UTIL)  clean

@@ -1,0 +1,53 @@
+# qakcompoldaa
+set verbose
+
+ls -lt       aerosol/module_sect_iface.f90*
+ls -lt       aerosol/aerchemistry.f90*
+
+echo "Enter 1 to continue, 0 to stop"
+set iflag = $<
+if ($iflag != 1) then
+   goto the_end
+endif
+
+/bin/mv      aerosol/module_sect_iface.f90       aerosol/module_sect_iface.f90.newaa
+/bin/cp -p   aerosol/module_sect_iface.f90.v10d  aerosol/module_sect_iface.f90
+/bin/mv      aerosol/aerchemistry.f90            aerosol/aerchemistry.f90.newaa
+/bin/cp -p   aerosol/aerchemistry.f90.v10d       aerosol/aerchemistry.f90
+
+ls -lt       aerosol/module_sect_iface.f90*
+ls -lt       aerosol/aerchemistry.f90*
+
+/bin/rm      compile/module_sect_iface.*
+/bin/rm      compile/aerchemistry.*
+
+compile.sh
+
+/bin/mv  mosaic.x  mosaic.oldaa.x
+
+/bin/cp -p   aerosol/module_sect_iface.f90.newaa  aerosol/module_sect_iface.f90
+/bin/cp -p   aerosol/aerchemistry.f90.newaa       aerosol/aerchemistry.f90
+
+ls -lt       aerosol/module_sect_iface.f90*
+ls -lt       aerosol/aerchemistry.f90*
+
+the_end:
+unset verbose
+exit
+
+
+
+
+
+
+/files0/d37080/mosaic_box/mos41a_re9/aerosol 2607: llth module_sect_iface.f90*
+-rw-r--r-- 1 d37080 users 34653 Oct  1 12:50 module_sect_iface.f90
+-rw-r--r-- 1 d37080 users 34558 Sep 30 17:54 module_sect_iface.f90.v10d
+-rwxr-xr-x 1 d37080 users 33097 Sep 25 13:36 module_sect_iface.f90.v00*
+/files0/d37080/mosaic_box/mos41a_re9/aerosol 2608: llth aerchemistry.f90*
+-rwxr-xr-x 1 d37080 users 15937 Oct  1 12:11 aerchemistry.f90*
+-rwxr-xr-x 1 d37080 users 13136 Sep 29 18:00 aerchemistry.f90.v10d*
+-rwxr-xr-x 1 d37080 users 13136 Sep 29 13:35 aerchemistry.f90.v10b*
+-rwxr-xr-x 1 d37080 users 13079 Sep 29 13:32 aerchemistry.f90.v10a*
+-rwxr-xr-x 1 d37080 users 13078 Sep 25 13:36 aerchemistry.f90.v00*
+

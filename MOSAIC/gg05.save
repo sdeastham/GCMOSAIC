@@ -1,0 +1,19 @@
+# gg05.save
+set verbose
+
+ls -d  gg05.sv*
+
+echo "Enter save directory name:"
+set savedir = $<
+
+mkdir  $savedir
+mkdir  $savedir/output
+
+/bin/cp -p  gg05??.inp  gg05??.bm*  $savedir
+
+/bin/cp -p  output/gg05??.fullout.txt  $savedir/output
+
+
+ls -R  $savedir
+
+unset verbose

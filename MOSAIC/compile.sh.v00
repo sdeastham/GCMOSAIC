@@ -1,0 +1,43 @@
+#!/bin/csh -f
+# compile.sh
+set verbose
+
+cd  compile
+/bin/rm  *.f90  Makefile*
+
+cp -p  ../datamodules/*.f90  .
+cp -p  ../main/*.f90  .
+cp -p  ../gas/*.f90  .
+cp -p  ../solver/*.f  .
+cp -p  ../aerosol/*.f90  .
+cp -p  ../cloud/*.f90  . 
+
+#BSINGH mosaic_support.f90 has to go through C pre-processor (cpp)
+/bin/rm module_mosaic_support.f90
+cpp ../main/module_mosaic_support.f90 module_mosaic_support.f90
+
+cp -p  ../Makefile  .
+unset verbose
+#BSINGH - NOTE:First cmd line arg has to be the compiler (pgf90 or lf95)
+#BSINGH - Following code retrieves all cmd line args (after 1st) and store it in flags variable
+set iarg = 2 #start from 2nd
+set flags = ""
+while ($iarg <= $#argv)
+   set flags = ( $flags $argv[$iarg] )
+   @ iarg = $iarg + 1
+end
+
+#BSINGH - if no cmd arg is specified, load pgi compiler
+if ( $#argv == 0 ) then
+   set compiler = pgf90
+   set flags = "-g -C -byteswapio -Ktrap=fp -O0"
+else
+   set compiler = $1
+endif
+set verbose
+make  mosaic.x COMP=$compiler FLAGS="$flags"
+
+/bin/mv  mosaic.x  ..
+cd  ..
+
+unset verbose

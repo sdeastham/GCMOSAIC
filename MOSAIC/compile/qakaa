@@ -1,0 +1,54 @@
+init_aerosol.f90:9:     lun_sect_171, &
+init_aerosol.f90:439:  lunaa = lun_sect_171
+module_data_mosaic_main.f90:66:                lun_sect_170,   & 
+module_data_mosaic_main.f90:67:                lun_sect_171,   & 
+module_data_mosaic_main.f90:68:                lun_sect_172,   & 
+module_data_mosaic_main.f90:69:                lun_sect_180,   & 
+module_data_mosaic_main.f90:70:                lun_sect_183,   & 
+module_data_mosaic_main.f90:71:                lun_sect_184,   & 
+module_data_mosaic_main.f90:72:                lun_sect_185,   & 
+module_data_mosaic_main.f90:73:                lun_sect_186,   & 
+module_data_mosaic_main.f90:74:                lun_sect_188,   & 
+module_data_mosaic_main.f90:75:                lun_sect_190
+module_pmcmos_aer.f90:23:	    cnn, knum_a, lun_sect_180, naer_tot, ngas_max, ntot_max, pi
+module_pmcmos_aer.f90:208:	luna = lun_sect_180
+module_pmcmos_aer.f90:289:	    lun_sect_183, lun_sect_184, lun_sect_185, lun_sect_186,  &
+module_pmcmos_aer.f90:290:	    lun_sect_188,  &
+module_pmcmos_aer.f90:342:	    write(lun_sect_183,*) 'dens_aer_mac*1000'
+module_pmcmos_aer.f90:343:	    write(lun_sect_183,'(a,i6)') (aer_name(l), &
+module_pmcmos_aer.f90:350:	lun = lun_sect_183
+module_pmcmos_aer.f90:351:	if (ltmp == 2) lun = lun_sect_184
+module_pmcmos_aer.f90:352:	if (ltmp == 3) lun = lun_sect_185
+module_pmcmos_aer.f90:371:	    write(lun_sect_183,'(a)') &
+module_pmcmos_aer.f90:374:	    write(lun_sect_183,'(a)') &
+module_pmcmos_aer.f90:419:	    write(lun_sect_183,'(i6,i2,f8.4,1p,11e11.3)') &
+module_pmcmos_aer.f90:430:	    lun = lun_sect_183
+module_pmcmos_aer.f90:431:	    if (ltmp == 2) lun = lun_sect_184
+module_pmcmos_aer.f90:442:	lun = lun_sect_185
+module_pmcmos_aer.f90:447:	lun = lun_sect_188
+module_pmcmos_aer.f90:528:	lun = lun_sect_186
+module_pmcmos_init.f90:17:    use module_data_mosaic_main, only: cnn, lun_sect_190, ngas_max, pblh, pr_atm, &
+module_pmcmos_init.f90:36:    write(lun_sect_190,'(i3,2x,a)') (i, species(i)(1:12), i=1,ngas_max)
+module_pmcmos_init.f90:37:    write(lun_sect_190,'(/a,5(1x,f14.6))') 'time(h)', time_sec/3600.0, &
+module_pmcmos_init.f90:39:    write(lun_sect_190,'(1p,5e14.6)') cnn(1:ngas_max)
+module_sect_iface.f90:350:       lun_sect_172, mw_air, naer_tot, ngas_max, ntot_used
+module_sect_iface.f90:402:    lunaa = lun_sect_172
+module_sect_iface.f90:598:       kdpdry_a, kjhyst_a, knum_a, kwater_a, lun_sect_172, &
+module_sect_iface.f90:637:    lunaa = lun_sect_172
+setiofiles.f90:3:  use module_data_mosaic_main,   only:lun_sect_170, lun_sect_171, &
+setiofiles.f90:4:       lun_sect_172, lun_sect_180, lun_sect_183, lun_sect_184,    &
+setiofiles.f90:5:       lun_sect_185, lun_sect_186, lun_sect_188, lun_sect_190,    &
+setiofiles.f90:37:  lun_sect_170 = 170
+setiofiles.f90:38:  lun_sect_171 = 171
+setiofiles.f90:39:  lun_sect_172 = 172
+setiofiles.f90:40:  lun_sect_180 = 180
+setiofiles.f90:41:  lun_sect_183 = 183
+setiofiles.f90:42:  lun_sect_184 = 184
+setiofiles.f90:43:  lun_sect_185 = 185
+setiofiles.f90:44:  lun_sect_186 = 186
+setiofiles.f90:45:  lun_sect_188 = 188
+setiofiles.f90:46:  lun_sect_190 = 190
+setiofiles.f90:48:  lunout = lun_sect_170
+time_integration_mode.f90:5:       pr_atm, te, time_sec, lun_sect_190, cair_mlc, ppb, ngas_max, &
+time_integration_mode.f90:75:        write(lun_sect_190,'(/a,5(1x,f14.6))') 'time(h)', time_sec/3600.0, &
+time_integration_mode.f90:77:        write(lun_sect_190,'(1p,5e14.6)') cnn(1:ngas_max)*ppb/cair_mlc

@@ -1,0 +1,23 @@
+# qakss
+
+foreach fname ( \
+fort.172d2 \
+fort.172d3 \
+fort.172w1 \
+fort.172w1b \
+fort.172w2 \
+fort.172w3 \
+fort.172w4 \
+)
+
+echo " "
+echo " "
+echo " "
+echo " "
+echo " "
+echo "doing diff on " $fname
+
+diff -wi $fname ../mos31dj3/$fname
+
+end
+

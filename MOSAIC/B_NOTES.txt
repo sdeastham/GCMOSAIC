@@ -1,0 +1,22 @@
+1. I directly took this cde from Dick, where he has introduced changes included in the following email text:
+
+Balwinder and Rahul,
+
+In sooty:/lustre/d37080/temp_balwinder/2014.0528a you will find these two files:
+	cambox_amicphys_updates.20140528re.tar.gz
+	mosaic_box_updates.20140528re.tar.gz
+
+They contain updates to the "cambox_amicphys" box model that includes MOSAIC, and updates to the mosaic box model, respectively.  The updates involve changes to files in Balwinder's directories
+/lustre/backedup/sing201/lustresing201/Mosaic/MosaicDevAft09May2013/MosaicCodeUpdates/20Aug2013/trls/5trl_cambox_amicphys_ee02c_rahulErrFix_18Apr2014     (cambox files)
+/lustre/backedup/sing201/lustresing201/Mosaic/MosaicDevAft09May2013/MosaicCodeUpdates/20May2013/1trl/update6_23may2014     (mosaic files)
+
+The updates involve:
+"	Adding HNO3 and HCl gases, and NO3, Cl, Ca, and CO3 aerosol species to modal_aero_amicphys.F90.  (These species are active when MOSAIC_SPECIES is defined.)
+"	Changes involving convergence_fail in modal_aero_amicphys.F90.  Declaring this in the module data is (I think) an error for OpenMP, as multiple processes on the same node would be using it.
+"	Changes to modal_aero_amicphys.F90 for Susannah Burrow's marine organics version (when MODAL_AERO_9MODE is defined).
+"	Changes to MOSAIC files that allow for simultaneous H2SO4 condensation and gas-phase chemistry production calculations, and using CAM5-MAM accommodation coefficients and SOA parameter values.  These are optional and currently will only be active when MOSAIC is used in CAM5 (or cambox_amicphys).
+"	Adding the 1.0e-3 factor for OIN/OC/SOA water in the function aerosol_water.
+
+Let me know if you find any problems or have questions.
+
+-- Dick

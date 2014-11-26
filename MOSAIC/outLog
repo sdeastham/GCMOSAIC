@@ -1,0 +1,250 @@
+
+cd compile
+/bin/rm *.f90 Makefile*
+
+cp -p ../datamodules/*.f90 .
+cp -p ../main/*.f90 .
+cp -p ../gas/*.f90 .
+cp -p ../solver/*.f .
+cp -p ../aerosol/*.f90 .
+cp -p ../cloud/*.f90 .
+
+
+/bin/rm module_mosaic_support.f90
+cpp ../main/module_mosaic_support.f90 module_mosaic_support.f90
+
+cp -p ../Makefile .
+unset verbose
+make mosaic.x COMP=$compiler FLAGS="$flags"
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_data_mosaic_kind.f90
+Encountered 0 errors, 0 warnings in file module_data_mosaic_kind.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_data_mosaic_constants.f90
+Encountered 0 errors, 0 warnings in file module_data_mosaic_constants.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_data_mosaic_main.f90
+Encountered 0 errors, 0 warnings in file module_data_mosaic_main.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_data_mosaic_aero.f90
+Encountered 0 errors, 0 warnings in file module_data_mosaic_aero.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_data_mosaic_asect.f90
+Encountered 0 errors, 0 warnings in file module_data_mosaic_asect.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_data_mosaic_gas.f90
+Encountered 0 errors, 0 warnings in file module_data_mosaic_gas.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_data_mosaic_cloud.f90
+Encountered 0 errors, 0 warnings in file module_data_mosaic_cloud.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_data_mosaic_pmcmos.f90
+Encountered 0 errors, 0 warnings in file module_data_mosaic_pmcmos.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_pmcmos_aer.f90
+Encountered 0 errors, 0 warnings in file module_pmcmos_aer.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_pmcmos_subaa.f90
+Encountered 0 errors, 0 warnings in file module_pmcmos_subaa.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_mosaic_init.f90
+Encountered 0 errors, 0 warnings in file module_mosaic_init.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_pmcmos_init.f90
+Encountered 0 errors, 0 warnings in file module_pmcmos_init.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_peg_util.f90
+Encountered 0 errors, 0 warnings in file module_peg_util.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_coag.f90
+Encountered 0 errors, 0 warnings in file module_coag.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_coag_3d.f90
+Encountered 0 errors, 0 warnings in file module_coag_3d.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_movesect.f90
+Encountered 0 errors, 0 warnings in file module_movesect.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_movesect_3d.f90
+Encountered 0 errors, 0 warnings in file module_movesect_3d.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_newnuc.f90
+Encountered 0 errors, 0 warnings in file module_newnuc.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_sect_iface.f90
+Encountered 0 errors, 0 warnings in file module_sect_iface.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_mosaic_ext.f90
+Encountered 0 errors, 0 warnings in file module_mosaic_ext.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_mosaic_support.f90
+Encountered 0 errors, 0 warnings in file module_mosaic_support.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_print_aer.f90
+Encountered 0 errors, 0 warnings in file module_print_aer.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   ASTEM.f90
+Encountered 0 errors, 0 warnings in file ASTEM.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   module_mosaic_lsode.f90
+Encountered 0 errors, 0 warnings in file module_mosaic_lsode.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   mosaic_box.25.f90
+Encountered 0 errors, 0 warnings in file mosaic_box.25.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   aerchemistry.f90
+Encountered 0 errors, 0 warnings in file aerchemistry.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   aeroptical.f90
+  2005-W: "aeroptical.f90", line 93: 'it' is used but never set.
+Encountered 0 errors, 1 warning in file aeroptical.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   cputime.f90
+Encountered 0 errors, 0 warnings in file cputime.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   init_aerosol.f90
+Encountered 0 errors, 0 warnings in file init_aerosol.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   miedriver.f90
+Encountered 0 errors, 0 warnings in file miedriver.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   cldchemistry.f90
+Encountered 0 errors, 0 warnings in file cldchemistry.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   function_arr.f90
+Encountered 0 errors, 0 warnings in file function_arr.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   function_troe.f90
+Encountered 0 errors, 0 warnings in file function_troe.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gaschemistry.f90
+Encountered 0 errors, 0 warnings in file gaschemistry.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gasintegrator.f90
+Encountered 0 errors, 0 warnings in file gasintegrator.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gasrateconstants_bio.f90
+Encountered 0 errors, 0 warnings in file gasrateconstants_bio.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gasrateconstants_com.f90
+Encountered 0 errors, 0 warnings in file gasrateconstants_com.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gasrateconstants.f90
+Encountered 0 errors, 0 warnings in file gasrateconstants.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gasrateconstants_het.f90
+Encountered 0 errors, 0 warnings in file gasrateconstants_het.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gasrateconstants_mar.f90
+Encountered 0 errors, 0 warnings in file gasrateconstants_mar.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gasrateconstants_urb.f90
+Encountered 0 errors, 0 warnings in file gasrateconstants_urb.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gasrates_bio.f90
+Encountered 0 errors, 0 warnings in file gasrates_bio.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gasrates_com.f90
+Encountered 0 errors, 0 warnings in file gasrates_com.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gasrates.f90
+Encountered 0 errors, 0 warnings in file gasrates.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gasrates_het.f90
+Encountered 0 errors, 0 warnings in file gasrates_het.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gasrates_mar.f90
+Encountered 0 errors, 0 warnings in file gasrates_mar.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   gasrates_urb.f90
+Encountered 0 errors, 0 warnings in file gasrates_urb.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   jac.f90
+Encountered 0 errors, 0 warnings in file jac.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   loadperoxyparameters.f90
+Encountered 0 errors, 0 warnings in file loadperoxyparameters.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   mapgas_bio.f90
+Encountered 0 errors, 0 warnings in file mapgas_bio.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   mapgas_com.f90
+Encountered 0 errors, 0 warnings in file mapgas_com.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   mapgas_mar.f90
+Encountered 0 errors, 0 warnings in file mapgas_mar.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   mapgasspecies.f90
+Encountered 0 errors, 0 warnings in file mapgasspecies.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   mapgas_urb.f90
+Encountered 0 errors, 0 warnings in file mapgas_urb.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   ode_bio.f90
+Encountered 0 errors, 0 warnings in file ode_bio.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   ode_com.f90
+Encountered 0 errors, 0 warnings in file ode_com.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   ode_gas.f90
+Encountered 0 errors, 0 warnings in file ode_gas.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   ode_het.f90
+Encountered 0 errors, 0 warnings in file ode_het.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   ode_mar.f90
+Encountered 0 errors, 0 warnings in file ode_mar.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   ode_urb.f90
+Encountered 0 errors, 0 warnings in file ode_urb.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   peroxyrateconstants.f90
+Encountered 0 errors, 0 warnings in file peroxyrateconstants.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   photoconstants_fixed.f90
+Encountered 0 errors, 0 warnings in file photoconstants_fixed.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   photoconstants_solar.f90
+Encountered 0 errors, 0 warnings in file photoconstants_solar.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   photoparam1.f90
+Encountered 0 errors, 0 warnings in file photoparam1.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   photoparam2.f90
+Encountered 0 errors, 0 warnings in file photoparam2.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   selectgasregime.f90
+Encountered 0 errors, 0 warnings in file selectgasregime.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   setgas_bio.f90
+Encountered 0 errors, 0 warnings in file setgas_bio.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   setgas_com.f90
+Encountered 0 errors, 0 warnings in file setgas_com.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   setgasindices.f90
+Encountered 0 errors, 0 warnings in file setgasindices.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   setgas_mar.f90
+Encountered 0 errors, 0 warnings in file setgas_mar.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   setgas_urb.f90
+Encountered 0 errors, 0 warnings in file setgas_urb.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   solarzenithangle.f90
+Encountered 0 errors, 0 warnings in file solarzenithangle.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  dlsode.f
+Encountered 0 errors, 0 warnings in file dlsode.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  dlsodes.f
+Encountered 0 errors, 0 warnings in file dlsodes.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  diprep.f
+Encountered 0 errors, 0 warnings in file diprep.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  dprjs.f
+Encountered 0 errors, 0 warnings in file dprjs.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  dsolss.f
+Encountered 0 errors, 0 warnings in file dsolss.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  cdrv.f
+Encountered 0 errors, 0 warnings in file cdrv.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  dprep.f
+Encountered 0 errors, 0 warnings in file dprep.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  adjlr.f
+Encountered 0 errors, 0 warnings in file adjlr.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  cntnzu.f
+Encountered 0 errors, 0 warnings in file cntnzu.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  jgroup.f
+Encountered 0 errors, 0 warnings in file jgroup.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  nnfc.f
+Encountered 0 errors, 0 warnings in file nnfc.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  nnsc.f
+Encountered 0 errors, 0 warnings in file nnsc.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  nntc.f
+Encountered 0 errors, 0 warnings in file nntc.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  nroc.f
+Encountered 0 errors, 0 warnings in file nroc.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  nsfc.f
+Encountered 0 errors, 0 warnings in file nsfc.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  odrv.f
+Encountered 0 errors, 0 warnings in file odrv.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  md.f
+Encountered 0 errors, 0 warnings in file md.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  sro.f
+Encountered 0 errors, 0 warnings in file sro.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  mdi.f
+Encountered 0 errors, 0 warnings in file mdi.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  mdm.f
+Encountered 0 errors, 0 warnings in file mdm.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  mdp.f
+Encountered 0 errors, 0 warnings in file mdp.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  mdu.f
+Encountered 0 errors, 0 warnings in file mdu.f.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   domassbalance.f90
+  2005-W: "domassbalance.f90", line 52: 'it' is used but never set.
+Encountered 0 errors, 1 warning in file domassbalance.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   function_nbllen.f90
+Encountered 0 errors, 0 warnings in file function_nbllen.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   function_watervapor.f90
+Encountered 0 errors, 0 warnings in file function_watervapor.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   init_data_modules.f90
+Encountered 0 errors, 0 warnings in file init_data_modules.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   integratechemistry.f90
+Encountered 0 errors, 0 warnings in file integratechemistry.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   main.f90
+Encountered 0 errors, 0 warnings in file main.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   parametric_analysis_mode.f90
+Encountered 0 errors, 0 warnings in file parametric_analysis_mode.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   print_gas.f90
+  2005-W: "print_gas.f90", line 22: 'it' is used but never set.
+Encountered 0 errors, 1 warning in file print_gas.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   readinputfile.f90
+  2005-W: "readinputfile.f90", line 232: 'input_version' is used but never set.
+Encountered 0 errors, 1 warning in file readinputfile.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   setaircomposition.f90
+Encountered 0 errors, 0 warnings in file setaircomposition.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   setiofiles.f90
+Encountered 0 errors, 0 warnings in file setiofiles.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   setrunparameters.f90
+Encountered 0 errors, 0 warnings in file setrunparameters.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   time_integration_mode.f90
+Encountered 0 errors, 0 warnings in file time_integration_mode.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   updateemissions.f90
+Encountered 0 errors, 0 warnings in file updateemissions.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   updatemetfields.f90
+Encountered 0 errors, 0 warnings in file updatemetfields.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   updatetime.f90
+Encountered 0 errors, 0 warnings in file updatetime.f90.
+lf95  -c --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g   mosaic_allocate_memory.f90
+Encountered 0 errors, 0 warnings in file mosaic_allocate_memory.f90.
+lf95  --ap --chk a,e,s,u --dal -O0 --trace --trap --pca -g  -o mosaic.x  module_data_mosaic_kind.o module_data_mosaic_constants.o module_data_mosaic_main.o module_data_mosaic_aero.o module_data_mosaic_asect.o module_data_mosaic_gas.o module_data_mosaic_cloud.o module_data_mosaic_pmcmos.o  module_pmcmos_aer.o module_pmcmos_init.o module_pmcmos_subaa.o  aerchemistry.o aeroptical.o ASTEM.o cputime.o init_aerosol.o miedriver.o module_coag.o module_coag_3d.o module_movesect.o module_movesect_3d.o module_newnuc.o module_peg_util.o module_sect_iface.o mosaic_box.25.o module_mosaic_ext.o module_mosaic_lsode.o  cldchemistry.o  function_arr.o function_troe.o gaschemistry.o gasintegrator.o gasrateconstants_bio.o gasrateconstants_com.o gasrateconstants.o gasrateconstants_het.o gasrateconstants_mar.o gasrateconstants_urb.o gasrates_bio.o gasrates_com.o gasrates.o gasrates_het.o gasrates_mar.o gasrates_urb.o jac.o loadperoxyparameters.o mapgas_bio.o mapgas_com.o mapgas_mar.o mapgasspecies.o mapgas_urb.o ode_bio.o ode_com.o ode_gas.o ode_het.o ode_mar.o ode_urb.o peroxyrateconstants.o photoconstants_fixed.o photoconstants_solar.o photoparam1.o photoparam2.o selectgasregime.o setgas_bio.o setgas_com.o setgasindices.o setgas_mar.o setgas_urb.o solarzenithangle.o  dlsode.o dlsodes.o diprep.o dprjs.o dsolss.o cdrv.o dprep.o adjlr.o cntnzu.o jgroup.o nnfc.o nnsc.o nntc.o nroc.o nsfc.o odrv.o md.o sro.o mdi.o mdm.o mdp.o mdu.o   domassbalance.o function_nbllen.o function_watervapor.o init_data_modules.o integratechemistry.o main.o parametric_analysis_mode.o module_print_aer.o print_gas.o readinputfile.o setaircomposition.o setiofiles.o setrunparameters.o time_integration_mode.o updateemissions.o updatemetfields.o updatetime.o mosaic_allocate_memory.o module_mosaic_support.o module_mosaic_init.o
+
+/bin/mv mosaic.x ..
+cd ..
+
+unset verbose

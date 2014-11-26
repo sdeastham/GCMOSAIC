@@ -1,0 +1,89 @@
+# junkrunsectaa
+set verbose
+
+
+/bin/rm fort.172
+mosaic.x << eoi
+sectw1.inp
+eoi
+/bin/mv fort.172 fort.172w1
+
+
+/bin/rm fort.172
+mosaic.x << eoi
+sectw1b.inp
+eoi
+/bin/mv fort.172 fort.172w1b
+
+
+/bin/rm fort.172
+mosaic.x << eoi
+sectw1c.inp
+eoi
+/bin/mv fort.172 fort.172w1c
+
+
+/bin/rm fort.172
+mosaic.x << eoi
+sectw1d.inp
+eoi
+/bin/mv fort.172 fort.172w1d
+
+
+/bin/rm fort.172
+mosaic.x << eoi
+sectw1e.inp
+eoi
+/bin/mv fort.172 fort.172w1e
+
+
+/bin/rm fort.172
+mosaic.x << eoi
+sectw2.inp
+eoi
+/bin/mv fort.172 fort.172w2
+
+
+/bin/rm fort.172
+mosaic.x << eoi
+sectw2c.inp
+eoi
+/bin/mv fort.172 fort.172w2c
+
+
+/bin/rm fort.172
+mosaic.x << eoi
+sectd2.inp
+eoi
+/bin/mv fort.172 fort.172d2
+
+
+/bin/rm fort.172
+mosaic.x << eoi
+sectw3.inp
+eoi
+/bin/mv fort.172 fort.172w3
+
+
+/bin/rm fort.172
+mosaic.x << eoi
+sectw3c.inp
+eoi
+/bin/mv fort.172 fort.172w3c
+
+
+/bin/rm fort.172
+mosaic.x << eoi
+sectd3.inp
+eoi
+/bin/mv fort.172 fort.172d3
+
+
+/bin/rm fort.172
+mosaic.x << eoi
+sectw4.inp
+eoi
+/bin/mv fort.172 fort.172w4
+
+
+unset verbose

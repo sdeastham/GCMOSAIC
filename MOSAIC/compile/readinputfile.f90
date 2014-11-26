@@ -1,0 +1,328 @@
+subroutine ReadInputFile
+
+  use module_data_mosaic_main
+  use module_data_mosaic_gas
+  use module_data_mosaic_aero
+  use module_data_mosaic_asect
+  use module_data_mosaic_cloud
+
+  use module_data_mosaic_pmcmos, only:  &
+       temp_profile_fname, pblh_profile_fname,  &
+       aer_init_fname, aer_back_fname, aer_emit_fname,  &
+       gas_init_fname, gas_back_fname, gas_emit_fname,  &
+       !BSINGH - 05/28/2013(RCE updates)
+       aer_emit_adjust_fac,  &
+       msolar_pmcmos_dtshift,  &
+       pmcmos_inputfile_version, pmcmos_inputfile_directory
+  !BSINGH - 05/28/2013(RCE updates ENDS)
+  use module_pmcmos_init, only:  pmcmos_init
+  
+  use module_sect_iface, only:  &!BSINGH - 05/28/2013(RCE updates)
+       sect_iface_allocate_memory
+  implicit none
+
+  interface
+     subroutine mosaic_allocate_memory( initialize_flag )
+
+      use module_data_mosaic_main
+      use module_data_mosaic_aero
+      use module_data_mosaic_asect
+
+      implicit none
+
+      integer, intent(in), optional :: initialize_flag
+    end subroutine mosaic_allocate_memory
+  end interface
+
+  !Subroutine arguments
+
+  !Local Variables
+  character(len=40)::  dword
+  !BSINGH - 05/28/2013(RCE updates)
+  integer i, ibin, idum, input_version
+  integer k
+  integer noffset, nsize_aer_tmp
+  !BSINGH - 05/28/2013(RCE updates ENDS)
+  real(r8) :: tmpa, tmpb
+
+
+! rc_easter 2013-07-31
+! rahul wanted to have single input file format,
+! so all the input_version stuff was deleted
+  read(lun_inp,*)dword
+
+  read(lun_inp,*)tbeg_mo, tbeg_dd, tbeg_hh, tbeg_mm, tbeg_ss ! UTC
+  read(lun_inp,*)trun_dd, trun_hh, trun_mm, trun_ss ! run time
+  read(lun_inp,*)dt_min         ! transport time-step [min]
+  read(lun_inp,*)dt_aeroptic_min        ! time-step for aerosol optics calcs [min]
+  read(lun_inp,*)rlon, rlat             ! lon and lat [deg]
+  read(lun_inp,*)zalt_m         ! altitude MSL [m]
+  read(lun_inp,*)RH                     ! relative humidity [%]
+  read(lun_inp,*)te                     ! temperature [K]
+  read(lun_inp,*)pr_atm         ! pressure [atm]
+  if (pr_atm < 0) then          ! if < 0, convert from [Pa] to [atm]
+     pr_atm = -pr_atm/press0_pa
+  end if
+  
+  ! this routine is not called from partmc_mosaic
+  m_partmc_mosaic = 0!BSINGH - 05/28/2013(RCE updates)
+
+  ntype_aer = 1
+  !BSINGH - 05/28/2013(RCE updates)
+  ntype_md1_aer = 1
+  ntype_md2_aer = 1
+  nsize_aer_tmp = 1
+  !BSINGH - 05/28/2013(RCE updates ENDS)
+  msectional_flag2 = 0
+  method_bcfrac = 1
+  method_kappa = 12
+
+  read(lun_inp,*) ntype_md1_aer, ntype_md2_aer
+  if (ntype_md1_aer < 1) then!BSINGH - 05/28/2013(RCE updates)
+     write(*,'(2a,2i10)') &
+       '*** readinputfile fatal error - ', &
+       'bad ntype_md1_aer', ntype_md1_aer!BSINGH - 05/28/2013(RCE updates)
+     stop
+  else if (ntype_md2_aer < 1) then!BSINGH - 05/28/2013(RCE updates)
+     write(*,'(2a,2i10)') &
+          '*** readinputfile fatal error - ', &
+          'bad ntype_md2_aer', ntype_md2_aer!BSINGH - 05/28/2013(RCE updates)
+     stop
+  end if
+  ntype_aer = ntype_md1_aer*ntype_md2_aer
+
+  ! msectional_flag2 = 1 indicates multi-dimensional sectional
+  if (ntype_aer > 1) msectional_flag2 = 1
+
+  read(lun_inp,*) method_bcfrac, method_kappa
+  if (method_bcfrac /= 1) then
+     write(*,'(2a,2i10)') &
+          '*** readinputfile fatal error - ', &
+          'bad method_bcfrac', method_bcfrac
+     stop
+  else if ((method_kappa /= 11) .and. (method_kappa /= 12)) then
+     write(*,'(2a,2i10)') &
+          '*** readinputfile fatal error - ', &
+          'bad method_kappa', method_kappa
+     stop
+  end if
+
+  !BSINGH - 05/28/2013(RCE updates)
+  read(lun_inp,*) nsize_aer_tmp
+  nbin_a = ntype_aer*nsize_aer_tmp
+  !BSINGH - 05/28/2013(RCE updates ENDS)
+
+  read(lun_inp,*) msize_framework
+  if ( (msize_framework /= mmodal       ) .and. &
+       (msize_framework /= munstructured) .and. &
+       (msize_framework /= msectional   ) ) then
+     write(*,'(2a,2i10)') &
+          '*** readinputfile fatal error - ', &
+          'bad msize_framework', msize_framework
+     stop
+  end if
+
+  ! the "cloud" variables were never fully implemented !BSINGH - 05/28/2013(RCE updates)
+  ! so ncldbin=0 for now
+  ncldbin_used = 0
+  !BSINGH - 05/28/2013(RCE updates)
+  ! set "max" values, which previously were hard-coded parameters
+  nbin_a_max = nbin_a
+  naerbin = nbin_a
+  naerbin_used = nbin_a
+  
+  naer_max = naer_tot*naerbin
+  
+  maxd_atype     = ntype_aer
+  maxd_atype_md1 = ntype_md1_aer
+  maxd_atype_md2 = ntype_md2_aer
+  maxd_asize = nsize_aer_tmp
+  
+  ! with partmc_mosaic, only the gas portion of the cnn array is used, 
+  ! so would do the following
+  !     ntot_used = ngas_max
+  ntot_used = ngas_max + naer_tot*naerbin + ncld_tot*ncldbin_used
+  ntot_max = ntot_used
+  write(*,'(/a,3i10/a,4i10)') &
+       'ntype_aer, nsize_aer_tmp, naerbin     ', &
+       ntype_aer, nsize_aer_tmp, naerbin, &
+       'naer_tot, naer_max, ngas_max, ntot_max', &
+       naer_tot, naer_max, ngas_max, ntot_max
+  
+  
+  ! now allocate memory
+  call mosaic_allocate_memory( 0 )
+  
+  if (m_partmc_mosaic <= 0) call sect_iface_allocate_memory
+  
+  nsize_aer(:) = nsize_aer_tmp
+
+  read(lun_inp,*) maersize_init_flag1
+  if (msize_framework == msectional) then
+     read(lun_inp,*) dlo_aersize_init, dhi_aersize_init
+     if (msectional_flag2 > 0) then
+        read(lun_inp,*) method_atype_md1_init
+        if (method_atype_md1_init <= 1) then
+           read(lun_inp,*) xcut_atype_md1(0:ntype_md1_aer)
+        else
+           read(lun_inp,*) xcutlo_atype_md1_init, xcuthi_atype_md1_init
+           tmpa = xcutlo_atype_md1_init + &
+                (xcuthi_atype_md1_init-xcutlo_atype_md1_init)/ntype_md1_aer
+           tmpb = max( 0.1_r8, xcutlo_atype_md1_init+0.1 )
+           if ( (tmpa < 0.0) .or. (xcuthi_atype_md1_init < tmpb) ) then
+              write(*,'(2a,1p,2e14.6)') &
+                   '*** readinputfile fatal error - ', &
+                   'bad xcutlo/hi_atype_md1_init', &
+                   xcutlo_atype_md1_init, xcuthi_atype_md1_init
+              stop
+           end if
+        end if
+
+        read(lun_inp,*) method_atype_md2_init
+        if (method_atype_md2_init <= 1) then
+           read(lun_inp,*) xcut_atype_md2(0:ntype_md2_aer)
+        else
+           read(lun_inp,*) xcutlo_atype_md2_init, xcuthi_atype_md2_init
+           if ( (xcutlo_atype_md2_init < 1.0e-7) .or. &
+                (xcuthi_atype_md2_init < xcutlo_atype_md2_init*1.1) ) then
+              write(*,'(2a,1p,2e14.6)') &
+                   '*** readinputfile fatal error - ', &
+                   'bad xcutlo/hi_atype_md2_init', &
+                   xcutlo_atype_md2_init, xcuthi_atype_md2_init
+              stop
+           end if
+        end if
+     end if ! (msectional_flag2 > 0)
+  else
+     dlo_aersize_init = 0.0 ; dhi_aersize_init = 0.0
+  end if ! (msize_framework == msectional)
+
+  read(lun_inp,*) mhyst_method
+  read(lun_inp,*) mcoag_flag1, ifreq_coag
+  ifreq_coag = max( 1, ifreq_coag )
+  read(lun_inp,*) mmovesect_flag1
+  read(lun_inp,*) mnewnuc_flag1
+  read(lun_inp,*) msectional_flag1
+
+  !BSINGH - 05/28/2013(RCE updates ENDS)
+
+
+  read(lun_inp,*)iprint         ! freq of output
+  read(lun_inp,*) iwrite_gas, iwrite_aer_bin, &
+       iwrite_aer_dist, iwrite_aer_species
+
+  read(lun_inp,*)mmode          ! flag
+  read(lun_inp,*)mgas           ! flag
+  read(lun_inp,*)maer           ! flag
+  read(lun_inp,*)mcld           ! flag
+  read(lun_inp,*)maeroptic              ! flag
+  read(lun_inp,*)mshellcore             ! flag
+  read(lun_inp,*)msolar         ! flag
+  read(lun_inp,*)mphoto         ! flag
+  read(lun_inp,*)mGAS_AER_XFER  ! flag
+  read(lun_inp,*)mDYNAMIC_SOLVER        ! flag
+  read(lun_inp,*)alpha_ASTEM    ! tolerance for tau
+  read(lun_inp,*)rtol_eqb_ASTEM ! relative eqb tolerance
+  read(lun_inp,*)ptol_mol_ASTEM ! percent mol tolerance
+
+
+  read(lun_inp,*) ipmcmos
+  istate_pblh = 0
+
+  msolar_pmcmos_dtshift = 0
+  if (msolar >= 1000) then
+     if (ipmcmos > 0) msolar_pmcmos_dtshift = 1
+     msolar = mod( msolar, 1000 )
+  end if
+
+
+  ! when ipmcmos > 0, this "manual" initialization of gas and aerosol species
+  ! is not necessary 
+  ! *** EXCEPT need to read in the gas names = species(1:ngas_max)
+
+  ! read gas info
+  dword = ' '
+  do while (dword /= 'GAS       ')
+     read(lun_inp,'(a)') dword ! read heading lines until "GAS" is found
+  end do
+
+  do i = 1, ngas_max
+     ! read index, species name, initial conc, and emissions
+     if (ipmcmos <= 0) then
+        read(lun_inp,*) k, species(i), cnn(i), emission(i)
+        cnn(i) = max( cnn(i), 0.0_r8 )
+     else
+        read(lun_inp,*) k, species(i)
+     end if
+     if (k /= i) then
+        write(*,'(2a,2(1x,i8))') &
+             '*** readinputfile fatal error', &
+             ' - gas indices i & k differ', i, k
+        stop
+     end if
+  enddo
+
+  if (ipmcmos <= 0) then
+     ! read aerosol info
+     dword = ' '
+     do while (dword /= 'AEROSOL   ')
+        read(lun_inp,'(a)')dword ! read heading lines until "AEROSOL" is found
+     end do
+     read(lun_inp,*)dword ! 2nd heading line
+     read(lun_inp,*)dword ! 3rd heading line
+
+     do ibin = 1, nbin_a
+        noffset = ngas_max + naer_tot*(ibin - 1)
+        read(lun_inp,*)idum, (cnn(k+noffset), k = 1, naer_tot)
+        do k = 1, naer_tot
+           cnn(k+noffset) = max( cnn(k+noffset), 0.0_r8 )
+        enddo
+     enddo
+  end if ! (ipmcmos <= 0)
+
+
+  ! read cloud file
+  !      read(lin,*)dword ! CLOUD1
+  !      do i=1, ncld_tot
+  !      read(lin,*)k, species(k), cnn(k), tmpa
+  !      enddo
+
+
+  !      write(6,*)'Finished reading all inputs...'
+
+  ! when ipmcmos > 0, the box model emulates partmc-mosiac, but with a sectional approach
+  if (ipmcmos > 0) then
+  ! read pmcmos stuff
+     read(lun_inp,*) pmcmos_inputfile_version
+     read(lun_inp,'(a)') pmcmos_inputfile_directory
+     if (pmcmos_inputfile_directory /= ' ') then
+        i = len(trim(pmcmos_inputfile_directory))
+        if (pmcmos_inputfile_directory(i:i) /= '/') &
+             pmcmos_inputfile_directory = pmcmos_inputfile_directory(1:i) // '/'
+     end if
+
+     read(lun_inp,'(a)') temp_profile_fname
+     read(lun_inp,'(a)') pblh_profile_fname
+     read(lun_inp,'(a)') gas_init_fname
+     read(lun_inp,'(a)') gas_back_fname
+     read(lun_inp,'(a)') gas_emit_fname
+     read(lun_inp,'(a)') aer_init_fname
+     read(lun_inp,'(a)') aer_back_fname
+     read(lun_inp,'(a)') aer_emit_fname
+
+     read(lun_inp,*) aer_emit_adjust_fac
+     call pmcmos_init
+     emission(:) = 0.0   ! use the pmcmos emissions
+  else
+     te_old = te
+     pr_atm_old = pr_atm
+     rh_old = rh
+     pblh = 1.0e3   ! default pblh (m)
+     pblh_old = pblh
+  end if
+! these variables are duplicated in module_data_mosaic_main and ..._aero
+  ipmcmos_aero = ipmcmos
+  maeroptic_aero = maeroptic
+
+  return
+end subroutine ReadInputFile

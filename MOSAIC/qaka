@@ -1,0 +1,35 @@
+# qaka
+set verbose
+
+ls -l BMosaicAllTestCase_run_comp
+ls -l bScript_for_mosaic_ver1.csh
+ls -l mosiac_error.txt
+ls -l run_mos_cases.csh
+
+unset verbose
+exit
+
+
+/bin/rm  BMosaicAllTestCase_run_comp
+/bin/rm  bScript_for_mosaic_ver1.csh
+/bin/rm  mosiac_error.txt
+/bin/rm  run_mos_cases.csh
+ln -s orig_links_dir/* .
+
+mkdir orig_links_dir
+cp -p BMosaicAllTestCase_run_comp orig_links_dir
+cp -p bScript_for_mosaic_ver1.csh orig_links_dir
+cp -p mosiac_error.txt orig_links_dir
+cp -p run_mos_cases.csh orig_links_dir
+
+ls -l BMosaicAllTestCase_run_comp
+ls -l bScript_for_mosaic_ver1.csh
+ls -l mosiac_error.txt
+ls -l run_mos_cases.csh
+
+lrwxrwxrwx 1 d37080 users 59 Sep 26 10:19 BMosaicAllTestCase_run_comp -> /home/sing201/trialProgs/cshell/BMosaicAllTestCase_run_comp*
+lrwxrwxrwx 1 d37080 users 59 Sep 26 10:19 bScript_for_mosaic_ver1.csh -> /home/sing201/trialProgs/cshell/bScript_for_mosaic_ver1.csh*
+lrwxrwxrwx 1 d37080 users 82 Sep 26 10:19 mosiac_error.txt -> /lustre/sing201/CAM-OUTPUT/Intel/aeroBrnch008_cam5210_Mos2_mos_in/mosiac_error.txt
+lrwxrwxrwx 1 d37080 users 49 Sep 26 10:19 run_mos_cases.csh -> /home/sing201/trialProgs/cshell/run_mos_cases.csh
+
+

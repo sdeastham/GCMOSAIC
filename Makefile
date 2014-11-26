@@ -77,6 +77,9 @@ libiso:
 libkpp:
 	@$(MAKE) -C $(GEOSDIR) libkpp
 
+libmos:
+	@$(MAKE) -C $(GEOSDIR) libmos
+
 libnc:
 	@$(MAKE) -C $(GEOSDIR) libnc	
 

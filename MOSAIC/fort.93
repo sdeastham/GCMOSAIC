@@ -1,0 +1,35 @@
+newnuc - itstep, ratenucl =       1  2.45E+03
+newnuc - itstep, igrow    =       1   1
+vehkam bin-nuc icase, icase_rdmax =        1        1  1.00E-04
+newnuc_method_flagaa/aa2   11   11
+      temp        rh   ratenuc  dia_clus ddry_part vdry_part     igrow
+  2.98E+02  9.50E-01  2.45E+03  1.00E-07  2.00E-06  4.19E-18  1.00E+00
+  h2so4avg  h2so4pre  h2so4cur   nh3_cur  h2so4del   nh3_del  so4a_del  nh4a_del
+  9.96E-11  1.00E-09  9.92E-11  1.00E-09 -9.92E-11 -1.98E-10  9.92E-11  1.98E-10
+     dtnuc    dens_a   nh/so g   nh/so a  numa_del  numa_dl2   reldiff   freduce
+  6.00E+01  1.80E+00  1.01E+01  2.00E+00  1.74E+09  1.74E+09  1.00E-04  4.83E-01
+  press_in      cair so4_volin wet_volfr wetv_dryv dens_part
+  1.01E+05  4.09E-05  2.45E+09  6.23E-02  1.19E+01  1.80E+00
+   tmp_spd     gr_kk   dnuc_kk   dfin_kk  gamma_kk     tmpa1     tmpb1     cs_kk
+  2.54E+02  1.60E+03  1.00E+00  4.57E+01  2.29E-01  4.70E-01  1.18E-05  2.01E-04
+ cs_pri_kk     nu_kk factor_kk ratenuclt ratenu_kk
+  1.36E+00  1.95E-04  1.00E+00  2.45E+03  2.45E+03
+so4 (ug/m3) o/n/d  2.2505E-07  3.8949E-01  3.8949E-01
+nh4 (ug/m3) o/n/d  2.0197E-08  1.4606E-01  1.4606E-01
+num (#/cm3) o/n/d  6.0289E-01  7.1031E+04  7.1030E+04
+newnucbb names  temp      rh        so2       h2so4_avg nh3_avg   numa_del
+newnucbb mins   2.98E+02  9.50E-01  1.00E-09  9.96E-11  1.00E-09  1.74E+09
+newnucbb maxs   2.98E+02  9.50E-01  1.00E-09  9.96E-11  1.00E-09  1.74E+09
+newnucbb avgs   2.98E+02  9.50E-01  1.00E-09  9.96E-11  1.00E-09  1.74E+09
+newnucbb hinuc  2.98E+02  9.50E-01  1.00E-09  9.96E-11  1.00E-09  1.74E+09
+newnucbb dtnuc  6.00E+01
+newnucbb ncnt          1         1         0         0         0         0         0
+newnuc - itstep, ratenucl =       2  2.27E-01
+newnuc - itstep, igrow    =       2   1
+newnucbb names  temp      rh        so2       h2so4_avg nh3_avg   numa_del
+newnucbb mins   2.98E+02  9.50E-01  1.00E-09  9.20E-15  8.01E-10  0.00E+00
+newnucbb maxs   2.98E+02  9.50E-01  1.00E-09  9.20E-15  8.01E-10  0.00E+00
+newnucbb avgs   2.98E+02  9.50E-01  1.00E-09  9.20E-15  8.01E-10  0.00E+00
+newnucbb hinuc  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00
+newnucbb dtnuc  6.00E+01
+newnucbb ncnt          1         0         0         0         0         0         0

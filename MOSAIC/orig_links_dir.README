@@ -1,0 +1,21 @@
+orig_links_dir.README in /home/d37080/mosaic_box/up9_24Sept2014
+
+
+When I created up9_24Sept2014 by tar/untar of Balwinders directory,
+it contained 4 logical links:
+
+    lrwxrwxrwx 1 d37080 users 59 Sep 26 10:19 BMosaicAllTestCase_run_comp -> /home/sing201/trialProgs/cshell/BMosaicAllTestCase_run_comp*
+    lrwxrwxrwx 1 d37080 users 59 Sep 26 10:19 bScript_for_mosaic_ver1.csh -> /home/sing201/trialProgs/cshell/bScript_for_mosaic_ver1.csh*
+    lrwxrwxrwx 1 d37080 users 82 Sep 26 10:19 mosiac_error.txt -> /lustre/sing201/CAM-OUTPUT/Intel/aeroBrnch008_cam5210_Mos2_mos_in/mosiac_error.txt
+    lrwxrwxrwx 1 d37080 users 49 Sep 26 10:19 run_mos_cases.csh -> /home/sing201/trialProgs/cshell/run_mos_cases.csh
+
+
+So I copied the actual target files to the orig_links_dir subdirectory,
+then deleted the original links (which pointed to Balwinder directory files),
+then created new links to the target files in the orig_links_dir subdirectory.
+
+    lrwxrwxrwx 1 d37080 users 42 Sep 26 10:37 BMosaicAllTestCase_run_comp -> orig_links_dir/BMosaicAllTestCase_run_comp*
+    lrwxrwxrwx 1 d37080 users 42 Sep 26 10:37 bScript_for_mosaic_ver1.csh -> orig_links_dir/bScript_for_mosaic_ver1.csh*
+    lrwxrwxrwx 1 d37080 users 31 Sep 26 10:37 mosiac_error.txt -> orig_links_dir/mosiac_error.txt
+    lrwxrwxrwx 1 d37080 users 32 Sep 26 10:37 run_mos_cases.csh -> orig_links_dir/run_mos_cases.csh
+

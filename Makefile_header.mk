@@ -581,7 +581,7 @@ ifeq ($(GTMM_NEEDED),1)
 else
  LINK          :=-L$(LIB)
 endif
-LINK           :=$(LINK) -lIsoropia -lHCOI -lHCOX -lHCO -lGeosUtil -lKpp
+LINK           :=$(LINK) -lIsoropia -lHCOI -lHCOX -lHCO -lGeosUtil -lKpp -lMOSAIC
 LINK           :=$(LINK) -lHeaders -lNcUtils $(NCL)
 
 ###############################################################################

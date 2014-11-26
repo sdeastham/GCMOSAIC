@@ -1,0 +1,14 @@
+case1.inp
+case2.inp 
+case3.inp   
+case4.inp   
+case5.inp   
+case6.inp   
+case7.inp   
+case8.inp   
+case9.inp
+case10.inp
+case11.inp
+case12.inp
+case13.inp
+case14.inp

@@ -1,0 +1,139 @@
+changes between MOSAIC.26 and MOSAIC.27 made by r. easter
+
+    started with nirvana:/home/zaveri/rahul/mosaic/MOSAIC.26
+	on 08-may-2008 
+
+    added code for sectional representation, nucleation 
+	(new-particle formation) and coagulation.
+	Most of this was adapted from WRF-chem.
+    added mie code from PartMC-MOSAIC
+   
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+list of changed and new files
+
+
+. directory
+   changed
+      Makefile
+
+
+aerosol directory
+   changed
+      aeroptical.f90
+      mosaic_box.25.f90
+   added from partmc
+      miedriver.f90
+   temporary
+      mosaic_topbox.f90
+   new
+      init_aerosol.f90
+      module_coag.f90
+      module_movesect.f90
+      module_newnuc.f90
+      module_peg_util.f90
+      module_sect_iface.f90
+
+
+datamodules directory
+   changed
+      module_data_mosaic_aero.f90
+      module_data_mosaic_main.f90
+   new
+      module_data_mosaic_asect.f90
+
+
+gas directory
+   changed
+      gasrateconstants_het.f90
+
+
+main directory
+   changed
+      init_data_modules.f90
+      main.f90
+      parametric_analysis_mode.f90
+      print_aer.f90
+      readinputfile.f90
+      setiofiles.f90
+      time_integration_mode.f90
+
+
+--------------------------------------------------------------------------------
+description of some of the changes
+
+
+msize_framework can be either
+    mmodal = 1
+	this is not fully implemented, so should not be used
+    munstructured = 2
+	this replaces the old msectional
+	in this case, there are really no "size bins" 
+	    (since bins would have boundaries), 
+	    but instead just a set of discrete particle sizes that
+	    change with time as particles grow/shrink
+    msectional = 3
+	this is now a true sectional framework with fixed (dry) size bins
+
+
+mhyst_method - this is new but not actually implemented
+    as we discussed a month ago, it would be useful to have an input
+    variable that controls the lower/upper curve behavior with
+
+                          ! values for mhyst_method
+    integer, parameter :: mhyst_uporlo_jhyst = 1	
+                          ! select upper/lower using "box method" involving jhyst_leg
+    integer, parameter :: mhyst_uporlo_waterhyst = 2	
+                          ! select upper/lower using "3-d method" involving water_a_hyst
+    integer, parameter :: mhyst_force_up = 3	! force upper leg
+    integer, parameter :: mhyst_force_lo = 4	! force lower leg
+
+
+module_data_mosaic_asect.f90 - contains most of the variables and arrays
+	in the wrf-chem version.
+	these are used when msize_framework = msectional
+
+
+readinputfile.f90
+    if the first 2 lines of the input file are
+        INPUT_VERSION
+        2
+    then the input file format is somewhat different from before,
+    and the code does the following
+        read(lun_inp,*)ntype_aer
+        read(lun_inp,*)nsize_aer(1)
+        nsize_aer(2:) = nsize_aer(1)
+        nbin_a = ntype_aer*nsize_aer(1)
+        read(lun_inp,*) msize_framework
+        read(lun_inp,*) maersize_init_flag1
+        read(lun_inp,*) mhyst_method
+        read(lun_inp,*) mcoag_flag1
+        read(lun_inp,*) mmovesect_flag1
+        read(lun_inp,*) mnewnuc_flag1
+        read(lun_inp,*) msectional_flag1
+    and also this (at the start of the aerosol section)
+        read(lun_inp,*) dlo_aersize_init, dhi_aersize_init
+
+    otherwise, the code assumes the old input file version,
+    and does
+        ntype_aer = 1
+        nsize_aer(:) = nbin_a
+        msize_framework = munstructured
+        maersize_init_flag1 = 1
+        mhyst_method = 1
+        mcoag_flag1 = 0
+        mmovesect_flag1 = 0
+        mnewnuc_flag1 = 0
+        msectional_flag1 = 0
+
+
+init_aerosol.f90 - this primarily does initialization of variables
+    and arrays in module_data_mosaic_asect.f90 when
+    msize_framework = msectional
+
+    however, it also does a few things when
+    msize_framework = munstructured,
+
+

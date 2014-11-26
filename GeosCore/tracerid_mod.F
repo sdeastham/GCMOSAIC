@@ -76,6 +76,11 @@
       ! for CTM tracers
       USE CMN_SIZE_MOD, ONLY : NNNTRID=>NNPAR
 
+#if defined (MOSAIC)
+      ! For MOSAIC
+      USE CMN_SIZE_MOD, ONLY : NBINMOS
+#endif
+
       IMPLICIT NONE
 
       INTEGER, PARAMETER :: MMMEMBER = 15
@@ -225,6 +230,32 @@
       ! isoprene (ISOA)
       INTEGER            :: IDTISOA1, IDTISOA2, IDTISOA3
       INTEGER            :: IDTISOG1, IDTISOG2, IDTISOG3
+
+#if   defined( MOSAIC )
+      ! MOSAIC bins (SDE 2014-11-13)
+      INTEGER            :: IDTaNUM(NBINMOS)    ! #/mol air
+      INTEGER            :: IDTaSO4(NBINMOS)    ! ppbv
+      INTEGER            :: IDTaNO3(NBINMOS)    ! ppbv
+      INTEGER            :: IDTaCl(NBINMOS)     ! ppbv
+      INTEGER            :: IDTaNH4(NBINMOS)    ! ppbv
+      INTEGER            :: IDTaCO3(NBINMOS)    ! ppbv
+      INTEGER            :: IDTaMSA(NBINMOS)    ! ppbv
+      INTEGER            :: IDTaNa(NBINMOS)     ! ppbv
+      INTEGER            :: IDTaCa(NBINMOS)     ! ppbv
+      INTEGER            :: IDTaOC(NBINMOS)     ! ppbv
+      INTEGER            :: IDTaBC(NBINMOS)     ! ppbv
+      INTEGER            :: IDTaONI(NBINMOS)    ! ppbv
+      INTEGER            :: IDTaAro1(NBINMOS)   ! ppbv
+      INTEGER            :: IDTaAro2(NBINMOS)   ! ppbv
+      INTEGER            :: IDTaAlk1(NBINMOS)   ! ppbv
+      INTEGER            :: IDTaOle1(NBINMOS)   ! ppbv
+      INTEGER            :: IDTaApi1(NBINMOS)   ! ppbv
+      INTEGER            :: IDTaApi2(NBINMOS)   ! ppbv
+      INTEGER            :: IDTaLim1(NBINMOS)   ! ppbv
+      INTEGER            :: IDTaLim2(NBINMOS)   ! ppbv
+      INTEGER            :: IDTaHyst(NBINMOS)   ! ppbv
+      INTEGER            :: IDTaH2O(NBINMOS)    ! ppbv
+#endif
 
 #if   defined( TOMAS )
       ! TOMAS tracer ID's  !(win, 6/23/09)
@@ -1539,6 +1570,541 @@
             CASE ( 'POPPBC' )
                COUNT     = COUNT+1
                IDTPOPPBC       = N
+
+#if   defined( MOSAIC )
+            !-----------------------------------
+            ! MOSAIC aerosol tracers
+            ! (SDE 2014-11-13)
+            !-----------------------------------
+            CASE ( 'A1NUM' )
+               COUNT     = COUNT+1
+               IDTaNUM(1)      = N
+            CASE ( 'A1SO4' )
+               COUNT     = COUNT+1
+               IDTaSO4(1)      = N
+            CASE ( 'A1NO3' )
+               COUNT     = COUNT+1
+               IDTaNO3(1)      = N
+            CASE ( 'A1CL' )
+               COUNT     = COUNT+1
+               IDTaCl(1)       = N
+            CASE ( 'A1NH4' )
+               COUNT     = COUNT+1
+               IDTaNH4(1)      = N
+            CASE ( 'A1CO3' )
+               COUNT     = COUNT+1
+               IDTaCO3(1)      = N
+            CASE ( 'A1MSA' )
+               COUNT     = COUNT+1
+               IDTaMSA(1)      = N
+            CASE ( 'A1NA' )
+               COUNT     = COUNT+1
+               IDTaNa(1)       = N
+            CASE ( 'A1CA' )
+               COUNT     = COUNT+1
+               IDTaCa(1)       = N
+            CASE ( 'A1OC' )
+               COUNT     = COUNT+1
+               IDTaOC(1)       = N
+            CASE ( 'A1BC' )
+               COUNT     = COUNT+1
+               IDTaBC(1)       = N
+            CASE ( 'A1OIN' )
+               COUNT     = COUNT+1
+               IDTaOIN(1)      = N
+            CASE ( 'A1ARO1' )
+               COUNT     = COUNT+1
+               IDTaAro1(1)     = N
+            CASE ( 'A1ARO2' )
+               COUNT     = COUNT+1
+               IDTaAro2(1)     = N
+            CASE ( 'A1ALK1' )
+               COUNT     = COUNT+1
+               IDTaAlk1(1)     = N
+            CASE ( 'A1OLE1' )
+               COUNT     = COUNT+1
+               IDTaOle1(1)     = N
+            CASE ( 'A1API1' )
+               COUNT     = COUNT+1
+               IDTaApi1(1)     = N
+            CASE ( 'A1API2' )
+               COUNT     = COUNT+1
+               IDTaApi2(1)     = N
+            CASE ( 'A1LIM1' )
+               COUNT     = COUNT+1
+               IDTaLim1(1)     = N
+            CASE ( 'A1LIM2' )
+               COUNT     = COUNT+1
+               IDTaLim2(1)     = N
+            CASE ( 'A1H2O' )
+               COUNT     = COUNT+1
+               IDTaH2O(1)      = N
+            CASE ( 'A1HYST' )
+               COUNT     = COUNT+1
+               IDTaHyst(1)     = N
+            CASE ( 'A2NUM' )
+               COUNT     = COUNT+1
+               IDTaNUM(2)      = N
+            CASE ( 'A2SO4' )
+               COUNT     = COUNT+1
+               IDTaSO4(2)      = N
+            CASE ( 'A2NO3' )
+               COUNT     = COUNT+1
+               IDTaNO3(2)      = N
+            CASE ( 'A2CL' )
+               COUNT     = COUNT+1
+               IDTaCl(2)       = N
+            CASE ( 'A2NH4' )
+               COUNT     = COUNT+1
+               IDTaNH4(2)      = N
+            CASE ( 'A2CO3' )
+               COUNT     = COUNT+1
+               IDTaCO3(2)      = N
+            CASE ( 'A2MSA' )
+               COUNT     = COUNT+1
+               IDTaMSA(2)      = N
+            CASE ( 'A2NA' )
+               COUNT     = COUNT+1
+               IDTaNa(2)       = N
+            CASE ( 'A2CA' )
+               COUNT     = COUNT+1
+               IDTaCa(2)       = N
+            CASE ( 'A2OC' )
+               COUNT     = COUNT+1
+               IDTaOC(2)       = N
+            CASE ( 'A2BC' )
+               COUNT     = COUNT+1
+               IDTaBC(2)       = N
+            CASE ( 'A2OIN' )
+               COUNT     = COUNT+1
+               IDTaOIN(2)      = N
+            CASE ( 'A2ARO1' )
+               COUNT     = COUNT+1
+               IDTaAro1(2)     = N
+            CASE ( 'A2ARO2' )
+               COUNT     = COUNT+1
+               IDTaAro2(2)     = N
+            CASE ( 'A2ALK1' )
+               COUNT     = COUNT+1
+               IDTaAlk1(2)     = N
+            CASE ( 'A2OLE1' )
+               COUNT     = COUNT+1
+               IDTaOle1(2)     = N
+            CASE ( 'A2API1' )
+               COUNT     = COUNT+1
+               IDTaApi1(2)     = N
+            CASE ( 'A2API2' )
+               COUNT     = COUNT+1
+               IDTaApi2(2)     = N
+            CASE ( 'A2LIM1' )
+               COUNT     = COUNT+1
+               IDTaLim1(2)     = N
+            CASE ( 'A2LIM2' )
+               COUNT     = COUNT+1
+               IDTaLim2(2)     = N
+            CASE ( 'A2H2O' )
+               COUNT     = COUNT+1
+               IDTaH2O(2)      = N
+            CASE ( 'A2HYST' )
+               COUNT     = COUNT+1
+               IDTaHyst(2)     = N
+            CASE ( 'A3NUM' )
+               COUNT     = COUNT+1
+               IDTaNUM(3)      = N
+            CASE ( 'A3SO4' )
+               COUNT     = COUNT+1
+               IDTaSO4(3)      = N
+            CASE ( 'A3NO3' )
+               COUNT     = COUNT+1
+               IDTaNO3(3)      = N
+            CASE ( 'A3CL' )
+               COUNT     = COUNT+1
+               IDTaCl(3)       = N
+            CASE ( 'A3NH4' )
+               COUNT     = COUNT+1
+               IDTaNH4(3)      = N
+            CASE ( 'A3CO3' )
+               COUNT     = COUNT+1
+               IDTaCO3(3)      = N
+            CASE ( 'A3MSA' )
+               COUNT     = COUNT+1
+               IDTaMSA(3)      = N
+            CASE ( 'A3NA' )
+               COUNT     = COUNT+1
+               IDTaNa(3)       = N
+            CASE ( 'A3CA' )
+               COUNT     = COUNT+1
+               IDTaCa(3)       = N
+            CASE ( 'A3OC' )
+               COUNT     = COUNT+1
+               IDTaOC(3)       = N
+            CASE ( 'A3BC' )
+               COUNT     = COUNT+1
+               IDTaBC(3)       = N
+            CASE ( 'A3OIN' )
+               COUNT     = COUNT+1
+               IDTaOIN(3)      = N
+            CASE ( 'A3ARO1' )
+               COUNT     = COUNT+1
+               IDTaAro1(3)     = N
+            CASE ( 'A3ARO2' )
+               COUNT     = COUNT+1
+               IDTaAro2(3)     = N
+            CASE ( 'A3ALK1' )
+               COUNT     = COUNT+1
+               IDTaAlk1(3)     = N
+            CASE ( 'A3OLE1' )
+               COUNT     = COUNT+1
+               IDTaOle1(3)     = N
+            CASE ( 'A3API1' )
+               COUNT     = COUNT+1
+               IDTaApi1(3)     = N
+            CASE ( 'A3API2' )
+               COUNT     = COUNT+1
+               IDTaApi2(3)     = N
+            CASE ( 'A3LIM1' )
+               COUNT     = COUNT+1
+               IDTaLim1(3)     = N
+            CASE ( 'A3LIM2' )
+               COUNT     = COUNT+1
+               IDTaLim2(3)     = N
+            CASE ( 'A3H2O' )
+               COUNT     = COUNT+1
+               IDTaH2O(3)      = N
+            CASE ( 'A3HYST' )
+               COUNT     = COUNT+1
+               IDTaHyst(3)     = N
+            CASE ( 'A4NUM' )
+               COUNT     = COUNT+1
+               IDTaNUM(4)      = N
+            CASE ( 'A4SO4' )
+               COUNT     = COUNT+1
+               IDTaSO4(4)      = N
+            CASE ( 'A4NO3' )
+               COUNT     = COUNT+1
+               IDTaNO3(4)      = N
+            CASE ( 'A4CL' )
+               COUNT     = COUNT+1
+               IDTaCl(4)       = N
+            CASE ( 'A4NH4' )
+               COUNT     = COUNT+1
+               IDTaNH4(4)      = N
+            CASE ( 'A4CO3' )
+               COUNT     = COUNT+1
+               IDTaCO3(4)      = N
+            CASE ( 'A4MSA' )
+               COUNT     = COUNT+1
+               IDTaMSA(4)      = N
+            CASE ( 'A4NA' )
+               COUNT     = COUNT+1
+               IDTaNa(4)       = N
+            CASE ( 'A4CA' )
+               COUNT     = COUNT+1
+               IDTaCa(4)       = N
+            CASE ( 'A4OC' )
+               COUNT     = COUNT+1
+               IDTaOC(4)       = N
+            CASE ( 'A4BC' )
+               COUNT     = COUNT+1
+               IDTaBC(4)       = N
+            CASE ( 'A4OIN' )
+               COUNT     = COUNT+1
+               IDTaOIN(4)      = N
+            CASE ( 'A4ARO1' )
+               COUNT     = COUNT+1
+               IDTaAro1(4)     = N
+            CASE ( 'A4ARO2' )
+               COUNT     = COUNT+1
+               IDTaAro2(4)     = N
+            CASE ( 'A4ALK1' )
+               COUNT     = COUNT+1
+               IDTaAlk1(4)     = N
+            CASE ( 'A4OLE1' )
+               COUNT     = COUNT+1
+               IDTaOle1(4)     = N
+            CASE ( 'A4API1' )
+               COUNT     = COUNT+1
+               IDTaApi1(4)     = N
+            CASE ( 'A4API2' )
+               COUNT     = COUNT+1
+               IDTaApi2(4)     = N
+            CASE ( 'A4LIM1' )
+               COUNT     = COUNT+1
+               IDTaLim1(4)     = N
+            CASE ( 'A4LIM2' )
+               COUNT     = COUNT+1
+               IDTaLim2(4)     = N
+            CASE ( 'A4H2O' )
+               COUNT     = COUNT+1
+               IDTaH2O(4)      = N
+            CASE ( 'A4HYST' )
+               COUNT     = COUNT+1
+               IDTaHyst(4)     = N
+            CASE ( 'A5NUM' )
+               COUNT     = COUNT+1
+               IDTaNUM(5)      = N
+            CASE ( 'A5SO4' )
+               COUNT     = COUNT+1
+               IDTaSO4(5)      = N
+            CASE ( 'A5NO3' )
+               COUNT     = COUNT+1
+               IDTaNO3(5)      = N
+            CASE ( 'A5CL' )
+               COUNT     = COUNT+1
+               IDTaCl(5)       = N
+            CASE ( 'A5NH4' )
+               COUNT     = COUNT+1
+               IDTaNH4(5)      = N
+            CASE ( 'A5CO3' )
+               COUNT     = COUNT+1
+               IDTaCO3(5)      = N
+            CASE ( 'A5MSA' )
+               COUNT     = COUNT+1
+               IDTaMSA(5)      = N
+            CASE ( 'A5NA' )
+               COUNT     = COUNT+1
+               IDTaNa(5)       = N
+            CASE ( 'A5CA' )
+               COUNT     = COUNT+1
+               IDTaCa(5)       = N
+            CASE ( 'A5OC' )
+               COUNT     = COUNT+1
+               IDTaOC(5)       = N
+            CASE ( 'A5BC' )
+               COUNT     = COUNT+1
+               IDTaBC(5)       = N
+            CASE ( 'A5OIN' )
+               COUNT     = COUNT+1
+               IDTaOIN(5)      = N
+            CASE ( 'A5ARO1' )
+               COUNT     = COUNT+1
+               IDTaAro1(5)     = N
+            CASE ( 'A5ARO2' )
+               COUNT     = COUNT+1
+               IDTaAro2(5)     = N
+            CASE ( 'A5ALK1' )
+               COUNT     = COUNT+1
+               IDTaAlk1(5)     = N
+            CASE ( 'A5OLE1' )
+               COUNT     = COUNT+1
+               IDTaOle1(5)     = N
+            CASE ( 'A5API1' )
+               COUNT     = COUNT+1
+               IDTaApi1(5)     = N
+            CASE ( 'A5API2' )
+               COUNT     = COUNT+1
+               IDTaApi2(5)     = N
+            CASE ( 'A5LIM1' )
+               COUNT     = COUNT+1
+               IDTaLim1(5)     = N
+            CASE ( 'A5LIM2' )
+               COUNT     = COUNT+1
+               IDTaLim2(5)     = N
+            CASE ( 'A5H2O' )
+               COUNT     = COUNT+1
+               IDTaH2O(5)      = N
+            CASE ( 'A5HYST' )
+               COUNT     = COUNT+1
+               IDTaHyst(5)     = N
+            CASE ( 'A6NUM' )
+               COUNT     = COUNT+1
+               IDTaNUM(6)      = N
+            CASE ( 'A6SO4' )
+               COUNT     = COUNT+1
+               IDTaSO4(6)      = N
+            CASE ( 'A6NO3' )
+               COUNT     = COUNT+1
+               IDTaNO3(6)      = N
+            CASE ( 'A6CL' )
+               COUNT     = COUNT+1
+               IDTaCl(6)       = N
+            CASE ( 'A6NH4' )
+               COUNT     = COUNT+1
+               IDTaNH4(6)      = N
+            CASE ( 'A6CO3' )
+               COUNT     = COUNT+1
+               IDTaCO3(6)      = N
+            CASE ( 'A6MSA' )
+               COUNT     = COUNT+1
+               IDTaMSA(6)      = N
+            CASE ( 'A6NA' )
+               COUNT     = COUNT+1
+               IDTaNa(6)       = N
+            CASE ( 'A6CA' )
+               COUNT     = COUNT+1
+               IDTaCa(6)       = N
+            CASE ( 'A6OC' )
+               COUNT     = COUNT+1
+               IDTaOC(6)       = N
+            CASE ( 'A6BC' )
+               COUNT     = COUNT+1
+               IDTaBC(6)       = N
+            CASE ( 'A6OIN' )
+               COUNT     = COUNT+1
+               IDTaOIN(6)      = N
+            CASE ( 'A6ARO1' )
+               COUNT     = COUNT+1
+               IDTaAro1(6)     = N
+            CASE ( 'A6ARO2' )
+               COUNT     = COUNT+1
+               IDTaAro2(6)     = N
+            CASE ( 'A6ALK1' )
+               COUNT     = COUNT+1
+               IDTaAlk1(6)     = N
+            CASE ( 'A6OLE1' )
+               COUNT     = COUNT+1
+               IDTaOle1(6)     = N
+            CASE ( 'A6API1' )
+               COUNT     = COUNT+1
+               IDTaApi1(6)     = N
+            CASE ( 'A6API2' )
+               COUNT     = COUNT+1
+               IDTaApi2(6)     = N
+            CASE ( 'A6LIM1' )
+               COUNT     = COUNT+1
+               IDTaLim1(6)     = N
+            CASE ( 'A6LIM2' )
+               COUNT     = COUNT+1
+               IDTaLim2(6)     = N
+            CASE ( 'A6H2O' )
+               COUNT     = COUNT+1
+               IDTaH2O(6)      = N
+            CASE ( 'A6HYST' )
+               COUNT     = COUNT+1
+               IDTaHyst(6)     = N
+            CASE ( 'A7NUM' )
+               COUNT     = COUNT+1
+               IDTaNUM(7)      = N
+            CASE ( 'A7SO4' )
+               COUNT     = COUNT+1
+               IDTaSO4(7)      = N
+            CASE ( 'A7NO3' )
+               COUNT     = COUNT+1
+               IDTaNO3(7)      = N
+            CASE ( 'A7CL' )
+               COUNT     = COUNT+1
+               IDTaCl(7)       = N
+            CASE ( 'A7NH4' )
+               COUNT     = COUNT+1
+               IDTaNH4(7)      = N
+            CASE ( 'A7CO3' )
+               COUNT     = COUNT+1
+               IDTaCO3(7)      = N
+            CASE ( 'A7MSA' )
+               COUNT     = COUNT+1
+               IDTaMSA(7)      = N
+            CASE ( 'A7NA' )
+               COUNT     = COUNT+1
+               IDTaNa(7)       = N
+            CASE ( 'A7CA' )
+               COUNT     = COUNT+1
+               IDTaCa(7)       = N
+            CASE ( 'A7OC' )
+               COUNT     = COUNT+1
+               IDTaOC(7)       = N
+            CASE ( 'A7BC' )
+               COUNT     = COUNT+1
+               IDTaBC(7)       = N
+            CASE ( 'A7OIN' )
+               COUNT     = COUNT+1
+               IDTaOIN(7)      = N
+            CASE ( 'A7ARO1' )
+               COUNT     = COUNT+1
+               IDTaAro1(7)     = N
+            CASE ( 'A7ARO2' )
+               COUNT     = COUNT+1
+               IDTaAro2(7)     = N
+            CASE ( 'A7ALK1' )
+               COUNT     = COUNT+1
+               IDTaAlk1(7)     = N
+            CASE ( 'A7OLE1' )
+               COUNT     = COUNT+1
+               IDTaOle1(7)     = N
+            CASE ( 'A7API1' )
+               COUNT     = COUNT+1
+               IDTaApi1(7)     = N
+            CASE ( 'A7API2' )
+               COUNT     = COUNT+1
+               IDTaApi2(7)     = N
+            CASE ( 'A7LIM1' )
+               COUNT     = COUNT+1
+               IDTaLim1(7)     = N
+            CASE ( 'A7LIM2' )
+               COUNT     = COUNT+1
+               IDTaLim2(7)     = N
+            CASE ( 'A7H2O' )
+               COUNT     = COUNT+1
+               IDTaH2O(7)      = N
+            CASE ( 'A7HYST' )
+               COUNT     = COUNT+1
+               IDTaHyst(7)     = N
+            CASE ( 'A8NUM' )
+               COUNT     = COUNT+1
+               IDTaNUM(8)      = N
+            CASE ( 'A8SO4' )
+               COUNT     = COUNT+1
+               IDTaSO4(8)      = N
+            CASE ( 'A8NO3' )
+               COUNT     = COUNT+1
+               IDTaNO3(8)      = N
+            CASE ( 'A8CL' )
+               COUNT     = COUNT+1
+               IDTaCl(8)       = N
+            CASE ( 'A8NH4' )
+               COUNT     = COUNT+1
+               IDTaNH4(8)      = N
+            CASE ( 'A8CO3' )
+               COUNT     = COUNT+1
+               IDTaCO3(8)      = N
+            CASE ( 'A8MSA' )
+               COUNT     = COUNT+1
+               IDTaMSA(8)      = N
+            CASE ( 'A8NA' )
+               COUNT     = COUNT+1
+               IDTaNa(8)       = N
+            CASE ( 'A8CA' )
+               COUNT     = COUNT+1
+               IDTaCa(8)       = N
+            CASE ( 'A8OC' )
+               COUNT     = COUNT+1
+               IDTaOC(8)       = N
+            CASE ( 'A8BC' )
+               COUNT     = COUNT+1
+               IDTaBC(8)       = N
+            CASE ( 'A8OIN' )
+               COUNT     = COUNT+1
+               IDTaOIN(8)      = N
+            CASE ( 'A8ARO1' )
+               COUNT     = COUNT+1
+               IDTaAro1(8)     = N
+            CASE ( 'A8ARO2' )
+               COUNT     = COUNT+1
+               IDTaAro2(8)     = N
+            CASE ( 'A8ALK1' )
+               COUNT     = COUNT+1
+               IDTaAlk1(8)     = N
+            CASE ( 'A8OLE1' )
+               COUNT     = COUNT+1
+               IDTaOle1(8)     = N
+            CASE ( 'A8API1' )
+               COUNT     = COUNT+1
+               IDTaApi1(8)     = N
+            CASE ( 'A8API2' )
+               COUNT     = COUNT+1
+               IDTaApi2(8)     = N
+            CASE ( 'A8LIM1' )
+               COUNT     = COUNT+1
+               IDTaLim1(8)     = N
+            CASE ( 'A8LIM2' )
+               COUNT     = COUNT+1
+               IDTaLim2(8)     = N
+            CASE ( 'A8H2O' )
+               COUNT     = COUNT+1
+               IDTaH2O(8)      = N
+            CASE ( 'A8HYST' )
+               COUNT     = COUNT+1
+               IDTaHyst(8)     = N
+#endif
 
 #if   defined( TOMAS )
             !-----------------------------------
@@ -4057,6 +4623,31 @@
       IDTISOA2  = 0
       IDTISOA3  = 0
       ! End SOAupdate 
+
+#if defined( MOSAIC )
+      IDTaNUM  = 0
+      IDTaH2O  = 0
+      IDTaHyst = 0
+      IDTaSO4  = 0
+      IDTaNO3  = 0
+      IDTaCl   = 0
+      IDTaNH4  = 0
+      IDTaCO3  = 0
+      IDTaMSA  = 0
+      IDTaNa   = 0
+      IDTaCa   = 0
+      IDTaOC   = 0
+      IDTaBC   = 0
+      IDTaOIN  = 0
+      IDTaAro1 = 0
+      IDTaAro2 = 0
+      IDTaAlk1 = 0
+      IDTaOle1 = 0
+      IDTaApi1 = 0
+      IDTaApi2 = 0
+      IDTaLim1 = 0
+      IDTaLim2 = 0
+#endif
 
 #if   defined( TOMAS )
       IDTH2SO4  = 0 !(win, 6/23/09)

@@ -1,0 +1,54 @@
+
+number total     initial, final   =  1.803680E+03  1.652838E+03
+number total    (final/initial)   =  9.163698E-01
+volume total     initial, final   =  1.055791E-12  1.055791E-12
+volume total    (initial/final)-1 =  2.220446E-16
+volume l=   1   (initial/final)-1 =  0.000000E+00
+volume l=   2    initial, final   =  0.000000E+00  0.000000E+00
+volume l=   3   (initial/final)-1 =  0.000000E+00
+volume l=   4   (initial/final)-1 =  2.220446E-16
+volume l=   5    initial, final   =  0.000000E+00  0.000000E+00
+volume l=   6    initial, final   =  0.000000E+00  0.000000E+00
+volume l=   7    initial, final   =  0.000000E+00  0.000000E+00
+volume l=   8    initial, final   =  0.000000E+00  0.000000E+00
+volume l=   9    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  10    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  11    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  12    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  13    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  14    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  15   (initial/final)-1 =  0.000000E+00
+volume l=  16    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  17   (initial/final)-1 =  0.000000E+00
+volume l=  18   (initial/final)-1 =  2.220446E-16
+volume l=  19    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  20   (initial/final)-1 =  0.000000E+00
+volume l=  21    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  22   (initial/final)-1 =  0.000000E+00
+
+number total     initial, final   =  1.652838E+03  1.526254E+03
+number total    (final/initial)   =  9.234139E-01
+volume total     initial, final   =  1.054879E-12  1.054879E-12
+volume total    (initial/final)-1 =  0.000000E+00
+volume l=   1   (initial/final)-1 =  0.000000E+00
+volume l=   2    initial, final   =  0.000000E+00  0.000000E+00
+volume l=   3   (initial/final)-1 =  0.000000E+00
+volume l=   4   (initial/final)-1 =  0.000000E+00
+volume l=   5    initial, final   =  0.000000E+00  0.000000E+00
+volume l=   6    initial, final   =  0.000000E+00  0.000000E+00
+volume l=   7    initial, final   =  0.000000E+00  0.000000E+00
+volume l=   8    initial, final   =  0.000000E+00  0.000000E+00
+volume l=   9    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  10    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  11    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  12    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  13    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  14    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  15   (initial/final)-1 =  0.000000E+00
+volume l=  16    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  17   (initial/final)-1 = -2.220446E-16
+volume l=  18   (initial/final)-1 =  0.000000E+00
+volume l=  19    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  20   (initial/final)-1 =  0.000000E+00
+volume l=  21    initial, final   =  0.000000E+00  0.000000E+00
+volume l=  22   (initial/final)-1 = -1.110223E-16

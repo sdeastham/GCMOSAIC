@@ -1,0 +1,23 @@
+# qakcompnewaa
+set verbose
+
+ls -lt       aerosol/module_sect_iface.f90*
+ls -lt       aerosol/aerchemistry.f90*
+
+echo "Enter 1 to continue, 0 to stop"
+set iflag = $<
+if ($iflag != 1) then
+   goto the_end
+endif
+
+/bin/rm      compile/module_sect_iface.*
+/bin/rm      compile/aerchemistry.*
+
+compile.sh
+
+/bin/mv  mosaic.x  mosaic.newaa.x
+
+unset verbose
+exit
+
+

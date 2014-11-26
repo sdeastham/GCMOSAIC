@@ -1,0 +1,31 @@
+#!/bin/csh
+
+foreach casename ( \
+case1.inp \
+case2.inp \
+case3.inp \
+case4.inp \
+case5.inp \
+case6.inp \
+case7.inp \
+case8.inp \
+case9.inp \
+case10.inp \
+case11.inp \
+case12.inp \
+case13.inp \
+case14.inp \
+wet2jd.inp \
+wet2je.inp \
+)
+
+
+echo "mosaic.x << eoi"  >! junkrunall_1case
+echo $casename          >> junkrunall_1case
+echo "eoi"              >> junkrunall_1case
+
+source  junkrunall_1case
+
+/bin/rm junkrunall_1case
+
+end

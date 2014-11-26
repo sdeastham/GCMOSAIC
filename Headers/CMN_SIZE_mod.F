@@ -467,6 +467,38 @@
 # endif
 #elif defined( APM )
       INTEGER, PARAMETER :: NNPAR   = 154   ! For APM (G. Luo, 3/8/11)
+#elif defined( MOSAIC )
+      ! By default, MOSAIC removes 14 tracers and replaces them with
+      ! binned aerosols
+#if defined ( SOAupdate )
+      INTEGER, PARAMETER :: NAERMOS = 22
+#else
+      INTEGER, PARAMETER :: NAERMOS = 14
+#endif
+#if defined ( MOSAIC4 )
+      INTEGER, PARAMETER :: NBINMOS = 4
+#if defined ( SOAupdate )
+      INTEGER, PARAMETER :: NNPAR = 199 ! 4 bins, 22 per bin (SDE, 2014-11-13)
+#else
+      INTEGER, PARAMETER :: NNPAR = 167 ! 4 bins, 14 per bin (SDE, 2014-11-13)
+#endif
+#else
+#elif defined ( MOSAIC8 )
+      INTEGER, PARAMETER :: NBINMOS = 8
+#if defined ( SOAupdate )
+      INTEGER, PARAMETER :: NNPAR = 287 ! 8 bins, 22 per bin (SDE, 2014-11-13)
+#else
+      INTEGER, PARAMETER :: NNPAR = 223 ! 8 bins, 14 per bin (SDE, 2014-11-13)
+#endif
+#else
+      ! Bulk MOSAIC
+      INTEGER, PARAMETER :: NBINMOS = 1
+#if defined ( SOAupdate )
+      INTEGER, PARAMETER :: NNPAR = 141 ! ~50 additional (SDE, 2014-11-13)
+#else
+      INTEGER, PARAMETER :: NNPAR = 133 ! ~42 additional (SDE, 2014-11-13)
+#endif
+#endif
 #else
       INTEGER, PARAMETER :: NNPAR   = 125   ! For non-TOMAS simulations
 #endif
