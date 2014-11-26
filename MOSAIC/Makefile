@@ -1,30 +1,110 @@
-#######################################################################
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  #
+#------------------------------------------------------------------------------
+#BOP
 #
-# Makefile for mosaic.x
+# !MODULE: Makefile (in the MOSAIC/ subdirectory)
 #
-#######################################################################
-
-
-#COMPILER = $(COMP)
- COMPILER = pgf90
-#foptions = $(FLAGS)
- foptions = -g -C -byteswapio -Ktrap=fp -O0
- COMP_FLAGS_FIXED =
-
-RM = /bin/rm
-
-
+# !DESCRIPTION: This makefile compiles the MOSAICIA code.  
+#  Object files (*.o) are bundled into the libMOSAIC.a library 
+#  (located in the LIB directory).  Module files (*.mod) are copied to 
+#  the MOD directory. 
+#\\
+#\\
+# !REMARKS:
+# To build the programs, call "make" with the following syntax:
+#                                                                             .
+#   make -jN TARGET REQUIRED-FLAGS [ OPTIONAL-FLAGS ]
+#                                                                             .
+# To display a complete list of options, type "make help".
+#                                                                             .
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# %%% NOTE: Normally you will not have to call this Makefile directly,     %%%
+# %%% it will be called automatically from the Makefile in the directory   %%%
+# %%% just above this one!                                                 %%%
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#                                                                             .
+# Makefile uses the following variables:
+#                                                                             .
+# Variable   Description
+# --------   -----------
+# SHELL      Specifies the shell for "make" to use (usually SHELL=/bin/sh)
+# ROOTDIR    Specifies the root-level directory of the GEOS-Chem code
+# HDR        Specifies the directory where GEOS-Chem include files are found
+# LIB        Specifies the directory where library files (*.a) are stored
+# MOD        Specifies the directory where module files (*.mod) are stored
+# AR         Sys var w/ name of library creator program (i.e., "ar", "ranlib")
+# MAKE       Sys var w/ name of Make command (i.e, "make" or "gmake")
+# R8         Specifies the command to treat "REAL" as "REAL*8"
 #
-# Suffix rules
-#
-.SUFFIXES : .f90 .f .o .x
+# !REVISION HISTORY: 
+#  14 Nov 2014 - S. D. Eastham-Initial version
+#EOP
+#------------------------------------------------------------------------------
+#BOC
 
-.f90.o:
-	$(COMPILER)  -c $(foptions) $(COMP_FLAGS_FREE)  $<
-.f.o:
-	$(COMPILER)  -c $(foptions) $(COMP_FLAGS_FIXED) $<
+###############################################################################
+###                                                                         ###
+###  Initialization section                                                 ###
+###                                                                         ###
+###############################################################################
 
+# Define variables
+SHELL :=/bin/bash
+ROOT  :=..
+HELP  :=$(ROOT)/help
+LIB   :=$(ROOT)/lib
+MOD   :=$(ROOT)/mod
 
+# Include header file.  This returns variables CC, F90, FREEFORM, LD, R8,
+# as well as the default Makefile compilation rules for source code files.
+include $(ROOT)/Makefile_header.mk
+
+# List of source files
+SRC   :=$(wildcard *.F) $(wildcard *.F90)
+
+# Replace .F and .F90 extensions with *.o
+TMP   :=$(SRC:.F=.o)
+OBJ   :=$(TMP:.F90=.o)
+
+###############################################################################
+###                                                                         ###
+###  Makefile targets: type "make help" for a complete listing!             ###
+###                                                                         ###
+###############################################################################
+
+.PHONY: clean help
+
+lib: $(OBJ)
+	$(AR) crs libMOSAIC.a $(OBJ)
+	mv libMOSAIC.a $(LIB)
+
+clean:
+	rm -f *.o *.mod
+
+help:
+	@$(MAKE) -C $(HELP)
+
+###############################################################################
+###                                                                         ###
+###  Dependencies listing                                                   ###
+###  (grep "USE " to get the list of module references!)                    ###
+###                                                                         ###
+###  From this list of dependencies, the "make" utility will figure out     ###
+###  correct order of compilation (so we don't have to do that ourselves).  ###
+###  This also allows us to compile on multiple processors with "make -j".  ###
+###                                                                         ###
+###  NOTES:                                                                 ###
+###  (1) Only specify object-file dependencies that are within this         ###
+###       directory.  Object files in other directories will be referenced  ### 
+###       at link-time.                                                     ###
+###  (2) For "make -jN" (i.e. compile N files simultaneously), all files    ###
+###       in this directory must have a listed dependency.                  ###
+###                                                                         ###
+###############################################################################
+
+isoropiaIIcode.o:  isoropiaIIcode.F  isrpia.inc
+	$(F90) $(R8) -c $<
 #
 # Object lists
 #
@@ -131,29 +211,6 @@ SOLVER =  \
 	mdp.o     \
 	mdu.o 
 
-MAIN =  \
-	domassbalance.o  \
-	function_nbllen.o  \
-	function_watervapor.o  \
-	init_data_modules.o  \
-	integratechemistry.o  \
-	main.o  \
-	parametric_analysis_mode.o  \
-	module_print_aer.o  \
-	print_gas.o  \
-	readinputfile.o  \
-	setaircomposition.o  \
-	setiofiles.o  \
-	setrunparameters.o  \
-	time_integration_mode.o  \
-	updateemissions.o  \
-	updatemetfields.o  \
-	updatetime.o \
-	mosaic_allocate_memory.o \
-	module_mosaic_support.o \
-	module_mosaic_init.o
-
-
 module_data_mosaic_constants.o:   module_data_mosaic_kind.o
 
 module_data_mosaic_main.o:   module_data_mosaic_kind.o  module_data_mosaic_constants.o
@@ -199,22 +256,5 @@ module_mosaic_init.o:        module_data_mosaic_kind.o module_data_mosaic_aero.o
 $(PMCMOS):  $(DATAMODU)
 
 $(AEROSOL):  $(DATAMODU)
-
-$(CLOUD):  $(DATAMODU)
-
-$(GAS):  $(DATAMODU)
-
-#$(SOLVER):  $(DATAMODU)
-
-$(MAIN):  $(DATAMODU)
-
-
-mosaic.x:  $(DATAMODU)  $(PMCMOS)  $(AEROSOL)  $(CLOUD)  $(GAS)  $(SOLVER)  $(MAIN)
-	$(COMPILER)  $(foptions)  -o $@  $(DATAMODU)  $(PMCMOS)  $(AEROSOL)  $(CLOUD)  $(GAS)  $(SOLVER)  $(MAIN)
-
-
-clean:
-	$(RM)  mosaic.x  *.o  *.mod
-
-
+#EOC
 

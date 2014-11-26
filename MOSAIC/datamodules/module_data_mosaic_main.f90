@@ -180,6 +180,12 @@
 !      real, save ::   &
 !       gas(ngas_max), flux(ngas_max,naerbin)
 
+      ! SDE: OpenMP
+!$OMP THREADPRIVATE( cnn                                  )
+!$OMP THREADPRIVATE( cair_mlc, cair_molm3, h2o, o2, o2    )
+!$OMP THREADPRIVATE( h2, speed_molec, te, pr_atm, RH      )
+!$OMP THREADPRIVATE( pblh, cair_mlc_old, cair_molm3_old   )
+!$OMP THREADPRIVATE( te_old, pr_atm_old, RH_old, pblh_old )
 
 !------------------------------------------------------------------------
 
