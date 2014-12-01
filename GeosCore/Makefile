@@ -257,7 +257,7 @@ libiso:                                            # Build code in ISOROPIA/
 	@$(MAKE) -C $(ISO)			  
 
 libmos:                                            # Build code in MOSAIC/
-	@$(MAKE) -C $(MOS)			  
+	@$(MAKE) -C $(MOS) lib			  
 
 libkpp:                                            # Build code in KPP/
 	@$(MAKE) -C $(KPP)			  
@@ -442,7 +442,8 @@ cleanup.o                   : cleanup.F                                      \
                               isoropiaII_mod.o        land_mercury_mod.o     \
                               seasalt_mod.o           linoz_mod.o            \
                               strat_chem_mod.o        mercury_mod.o          \
-                              modis_lai_mod.o         ocean_mercury_mod.o    \
+                              modis_lai_mod.o         mosaic_mod.o           \
+							  ocean_mercury_mod.o                            \
                               pbl_mix_mod.o           pjc_pfix_mod.o         \
                               planeflight_mod.o       sulfate_mod.o          \
                               tagged_co_mod.o         tomas_mod.o            \
@@ -755,6 +756,9 @@ merra_cn_mod.o              : merra_cn_mod.F                                 \
 merra_i6_mod.o              : merra_i6_mod.F
 
 modis_lai_mod.o             : modis_lai_mod.F90       mapping_mod.o
+
+mosaic_mod.o                : mosaic_mod.F                                   \
+                              chemgrid_mod.o          tracerid_mod.o        
 
 nc_soilnox_read.o           : nc_soilnox_read.F90
 

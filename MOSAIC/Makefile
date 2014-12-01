@@ -60,15 +60,17 @@ MOD   :=$(ROOT)/mod
 # as well as the default Makefile compilation rules for source code files.
 include $(ROOT)/Makefile_header.mk
 
-# List of source files
-#SRC   :=$(wildcard *.F) $(wildcard *.F90)
+## List of source files
+#SRC   :=$(wildcard *.f) $(wildcard *.f90)
+#
+## Replace .F and .F90 extensions with *.o
+#TMP   :=$(SRC:.f=.o)
+#OBJ   :=$(TMP:.f90=.o)
 
-# We need to specialize this - only certain files are needed
-
-
-# Replace .F and .F90 extensions with *.o
-TMP   :=$(SRC:.F=.o)
-OBJ   :=$(TMP:.F90=.o)
+.f90.o:
+	$(F90) -c $(FREEFORM) $<
+.f.o:
+	$(F90) -c $<
 
 ###############################################################################
 ###                                                                         ###
@@ -77,16 +79,6 @@ OBJ   :=$(TMP:.F90=.o)
 ###############################################################################
 
 .PHONY: clean help
-
-lib: $(OBJ)
-	$(AR) crs libMOSAIC.a $(OBJ)
-	mv libMOSAIC.a $(LIB)
-
-clean:
-	rm -f *.o *.mod
-
-help:
-	@$(MAKE) -C $(HELP)
 
 ###############################################################################
 ###                                                                         ###
@@ -212,6 +204,28 @@ SOLVER =  \
 	mdp.o     \
 	mdu.o 
 
+MAIN =  \
+	domassbalance.o  \
+	function_nbllen.o  \
+	function_watervapor.o  \
+	init_data_modules.o  \
+	integratechemistry.o  \
+	main.o  \
+	parametric_analysis_mode.o  \
+	module_print_aer.o  \
+	print_gas.o  \
+	readinputfile.o  \
+	setaircomposition.o  \
+	setiofiles.o  \
+	setrunparameters.o  \
+	time_integration_mode.o  \
+	updateemissions.o  \
+	updatemetfields.o  \
+	updatetime.o \
+	mosaic_allocate_memory.o \
+	module_mosaic_support.o \
+	module_mosaic_init.o
+
 module_data_mosaic_constants.o:   module_data_mosaic_kind.o
 
 module_data_mosaic_main.o:   module_data_mosaic_kind.o  module_data_mosaic_constants.o
@@ -257,5 +271,26 @@ module_mosaic_init.o:        module_data_mosaic_kind.o module_data_mosaic_aero.o
 $(PMCMOS):  $(DATAMODU)
 
 $(AEROSOL):  $(DATAMODU)
+
+$(CLOUD):  $(DATAMODU)
+
+$(GAS):  $(DATAMODU)
+
+#$(SOLVER):  $(DATAMODU)
+
+$(MAIN):  $(DATAMODU)
+
+lib:  $(DATAMODU)  $(PMCMOS)  $(AEROSOL)  $(CLOUD)  $(GAS)  $(SOLVER)  $(MAIN)
+#	$(F90) $(FREEFOM)  -c $@  $(DATAMODU)  $(PMCMOS)  $(AEROSOL)  $(CLOUD)  $(GAS)  $(SOLVER)  $(MAIN)
+#	$(F90) $(FREEFOM)  -o $@  $(DATAMODU)  $(PMCMOS)  $(AEROSOL)  $(CLOUD)  $(GAS)  $(SOLVER)  $(MAIN)
+	$(AR) crs libMOSAIC.a $(DATAMODU) $(PMCMOS) $(AEROSOL) $(SOLVER) $(MAIN)
+	mv libMOSAIC.a $(LIB)
+
+clean:
+	rm -f *.o *.mod
+
+help:
+	@$(MAKE) -C $(HELP)
+
 #EOC
 

@@ -244,7 +244,12 @@
       INTEGER            :: IDTaCa(NBINMOS)     ! ppbv
       INTEGER            :: IDTaOC(NBINMOS)     ! ppbv
       INTEGER            :: IDTaBC(NBINMOS)     ! ppbv
-      INTEGER            :: IDTaONI(NBINMOS)    ! ppbv
+      INTEGER            :: IDTaOIN(NBINMOS)    ! ppbv
+      INTEGER            :: IDTaHyst(NBINMOS)   ! ppbv
+      INTEGER            :: IDTaH2O(NBINMOS)    ! ppbv
+
+      ! These are relevant only to the SOA mechanism
+      ! Leave in as future-proofing (SDE 2014-11-27)
       INTEGER            :: IDTaAro1(NBINMOS)   ! ppbv
       INTEGER            :: IDTaAro2(NBINMOS)   ! ppbv
       INTEGER            :: IDTaAlk1(NBINMOS)   ! ppbv
@@ -253,8 +258,6 @@
       INTEGER            :: IDTaApi2(NBINMOS)   ! ppbv
       INTEGER            :: IDTaLim1(NBINMOS)   ! ppbv
       INTEGER            :: IDTaLim2(NBINMOS)   ! ppbv
-      INTEGER            :: IDTaHyst(NBINMOS)   ! ppbv
-      INTEGER            :: IDTaH2O(NBINMOS)    ! ppbv
 #endif
 
 #if   defined( TOMAS )
@@ -4639,6 +4642,7 @@
       IDTaOC   = 0
       IDTaBC   = 0
       IDTaOIN  = 0
+      ! SOA species not yet used
       IDTaAro1 = 0
       IDTaAro2 = 0
       IDTaAlk1 = 0

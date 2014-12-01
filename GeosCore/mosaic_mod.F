@@ -28,8 +28,9 @@
 ! !PRIVATE MEMBER FUNCTIONS:
 !
       PRIVATE :: INIT_MOSAIC
+      PRIVATE :: INIT_DATA_MODULES_INBUILT
+      PRIVATE :: INIT_AEROSOL_INBUILT
       PRIVATE :: WATER_VAPOR
-      PRIVATE :: SET_MOSAIC_AIR
 !
 ! !REMARKS:
 !  Original Author:
@@ -189,16 +190,24 @@
       ! MOSAIC indexing
       use module_data_mosaic_main, only: r8,naer_tot,ngas_max, !Parameters
      &   ntot_max,avogad,kh2so4,khno3,khcl,knh3,kmsa,knum_a,piover6,
-     &   ksigmag_a,kjhyst_a,kwater_a,ntot_used,cnn
+     &   ksigmag_a,kjhyst_a,kwater_a,ntot_used,cnn,kdpdry_a,dt_sec
 
       use module_data_mosaic_aero, only: nbin_a_max,naer,ngas_volatile,
-     &   jtotal,nbin_a,ih2so4_g,ihno3_g,ihcl_g,inh3_g,iMSA_a_g,
+     &   jtotal,nbin_a
+    
+      ! CNN aerosol mass indices 
+      use module_data_mosaic_aero, only: 
+     &   iSO4_a,iNO3_a,iCl_a,iNH4_a,iMSA_a,iCO3_a,iNa_a,iCa_a,iOC_a,
+     &   iBC_a,iOIN_a 
+
+      ! Switches
+      use module_data_mosaic_aero, only:
      &   jhyst_lo, jhyst_up, jhyst_undefined,mhyst_method,
      &   mhyst_uporlo_waterhyst,all_solid,all_liquid,mixed,no_aerosol
 
       use module_data_mosaic_main, only: pr_atm, RH, te, o2, h2, h2o,
      &   pr_atm_old, RH_old, te_old, speed_molec, pblh, pblh_old,
-     &   cair_mlc, cair_molm3
+     &   cair_mlc, cair_molm3, cair_mlc_old, cair_molm3_old, ppb
      
 
 !
@@ -242,11 +251,12 @@
       REAL(r8),DIMENSION(nbin_a_max) :: dp_wet_a
 
       LOGICAL, SAVE            :: FIRST = .TRUE.
-      INTEGER                  :: I,    J,    L,    N
+      INTEGER                  :: I,    J,    L,    N, NOFFSET
       CHARACTER(LEN=255)       :: X
       real(r8)                 :: molecPerCm3 ! Molecules of air per cm3
       real(r8)                 :: boxPerCm3 ! 1/(Box volume in cm3)
       real(r8)                 :: cmpConv   ! kg -> umol/m3 (needs /(g/mol))
+      real(r8)                 :: VOL       ! Box volume in m3
 
       ! Unused outputs from aerchemistry
       real(r8)                 :: cair_mol_m3, cair_mol_cc
@@ -335,6 +345,8 @@
          ! Initialize arrays
          CALL INIT_MOSAIC
 
+         ppb = 1.d9
+
          ! Reset first-time flag
          FIRST = .FALSE. 
       ENDIF
@@ -350,7 +362,7 @@
 !$OMP PARALLEL DO
 !$OMP+DEFAULT( SHARED )
 !$OMP+PRIVATE( I,    J,      L,     N,                  VOL )
-!$OMP+PRIVATE( CNN, NOFFSET,boxPerCm3,molecPerCm3,cmpConv  )
+!$OMP+PRIVATE(      NOFFSET,boxPerCm3,molecPerCm3,cmpConv  )
 !$OMP+PRIVATE( iter_MESA, aH2O_a, gam_ratio, jaerosolstate  )
 !$OMP+PRIVATE( dp_wet_a, cair_mol_m3, cair_mol_cc           )
 !$OMP+SCHEDULE( DYNAMIC )
@@ -403,8 +415,6 @@
          o2  = 0.21*cair_mlc
          h2  = 0.58e-6*cair_mlc
 
-         ppb = 1.e+9
-
          ! Molecules of air per cm3
          ! kg/m3 * (m3/cm3 * g/kg) * molec/mol * (mol/g)
          molecPerCm3 = cair_mlc
@@ -428,7 +438,7 @@
      &         TRACER_MW_KG(IDTaNUM(N))) * AVOGADRO * boxPerCm3
 
             ! These would be used in a modal representation
-            CNN(NOFFSET+kpdry_a) = 0d0       ! Dry diameter in um
+            CNN(NOFFSET+kdpdry_a) = 0d0       ! Dry diameter in um
             CNN(NOFFSET+ksigmag_a) = 0d0     ! Geometric SD
 
             ! Aerosol water content (kg/m3 air)
@@ -436,7 +446,7 @@
 
             ! Hysteresis
             IF (mhyst_method == mhyst_uporlo_waterhyst) THEN
-               CNN(NOFFSET+kjhyst_a) = STT(I,J,L,IDTaHyst)/VOL
+               CNN(NOFFSET+kjhyst_a) = STT(I,J,L,IDTaHyst(N))/VOL
             ELSE
                CNN(NOFFSET+kjhyst_a) = 0d0
             ENDIF
@@ -493,27 +503,27 @@
             ENDIF
 
             ! Aerosol components
-            STT(I,J,L,IDTaSO4(N)) = CNN(NOFFSETT+kwater_a+iso4_a) *
+            STT(I,J,L,IDTaSO4(N)) = CNN(NOFFSET+kwater_a+iso4_a) *
      &                 TRACER_MW_KG(IDTaSO4(N)) / cmpConv
-            STT(I,J,L,IDTaNO3(N)) = CNN(NOFFSETT+kwater_a+ino3_a) *
+            STT(I,J,L,IDTaNO3(N)) = CNN(NOFFSET+kwater_a+ino3_a) *
      &                 TRACER_MW_KG(IDTaNO3(N)) / cmpConv
-            STT(I,J,L,IDTaCl(N)) = CNN(NOFFSETT+kwater_a+iCl_a) *
+            STT(I,J,L,IDTaCl(N)) = CNN(NOFFSET+kwater_a+iCl_a) *
      &                 TRACER_MW_KG(IDTaCl(N)) / cmpConv
-            STT(I,J,L,IDTaNH4(N)) = CNN(NOFFSETT+kwater_a+iNH4_a) *
+            STT(I,J,L,IDTaNH4(N)) = CNN(NOFFSET+kwater_a+iNH4_a) *
      &                 TRACER_MW_KG(IDTaNH4(N)) / cmpConv
-            STT(I,J,L,IDTaCO3(N)) = CNN(NOFFSETT+kwater_a+iCO3_a) *
+            STT(I,J,L,IDTaCO3(N)) = CNN(NOFFSET+kwater_a+iCO3_a) *
      &                 TRACER_MW_KG(IDTaCO3(N)) / cmpConv
-            STT(I,J,L,IDTaMSA(N)) = CNN(NOFFSETT+kwater_a+iMSA_a) *
+            STT(I,J,L,IDTaMSA(N)) = CNN(NOFFSET+kwater_a+iMSA_a) *
      &                 TRACER_MW_KG(IDTaMSA(N)) / cmpConv
-            STT(I,J,L,IDTaNa(N)) = CNN(NOFFSETT+kwater_a+iNa_a) *
+            STT(I,J,L,IDTaNa(N)) = CNN(NOFFSET+kwater_a+iNa_a) *
      &                 TRACER_MW_KG(IDTaNa(N)) / cmpConv
-            STT(I,J,L,IDTaCa(N)) = CNN(NOFFSETT+kwater_a+iCa_a) *
+            STT(I,J,L,IDTaCa(N)) = CNN(NOFFSET+kwater_a+iCa_a) *
      &                 TRACER_MW_KG(IDTaCa(N)) / cmpConv
-            STT(I,J,L,IDTaOC(N)) = CNN(NOFFSETT+kwater_a+iOC_a) *
+            STT(I,J,L,IDTaOC(N)) = CNN(NOFFSET+kwater_a+iOC_a) *
      &                 TRACER_MW_KG(IDTaOC(N)) / cmpConv
-            STT(I,J,L,IDTaBC(N)) = CNN(NOFFSETT+kwater_a+iBC_a) *
+            STT(I,J,L,IDTaBC(N)) = CNN(NOFFSET+kwater_a+iBC_a) *
      &                 TRACER_MW_KG(IDTaBC(N)) / cmpConv
-            STT(I,J,L,IDTaOIN(N)) = CNN(NOFFSETT+kwater_a+iOIN_a) *
+            STT(I,J,L,IDTaOIN(N)) = CNN(NOFFSET+kwater_a+iOIN_a) *
      &                 TRACER_MW_KG(IDTaOIN(N)) / cmpConv
             ! SOA not yet implemented
          ENDDO
@@ -545,7 +555,8 @@
 !\\
 ! !INTERFACE:
 !
-      FUNCTION WATER_VAPOR(rh, cair_mld, te, pr_atm) 
+      FUNCTION WATER_VAPOR(rh_arg, cair_mlc_arg, te_arg, pr_atm_arg)
+     &          RESULT(WVAP)
 !
 ! !USES:
 !
@@ -572,9 +583,9 @@
 !
 ! !LOCAL VARIABLES:
 !
-      REAL(r8),INTENT(OUT) :: WATER_VAPOR
-      REAL(r8),INTENT(IN)  :: RH, CAIR_MLC, TE, PR_ATM
+      REAL(r8),INTENT(IN)  :: RH_ARG, CAIR_MLC_ARG, TE_ARG, PR_ATM_ARG
       REAL(r8)             :: T_STEAM, PR_STD, A, ARG, PR_H2O
+      REAL(r8)             :: WVAP
 
       !=================================================================
       ! WATER_VAPOR begins here!
@@ -583,10 +594,10 @@
       t_steam = 373.15 ! steam temperature  [K]
       pr_std   = 1.0   ! standard pressure  [atm]
 
-      a      = 1.0 - t_steam/te
+      a      = 1.0 - t_steam/te_arg
       arg    = (((-.1299*a -.6445)*a -1.976)*a +13.3185)*a
       pr_h2o = pr_std*exp(arg)  ! [atm]
-      WATER_VAPOR = RH*(pr_h2o/pr_atm)*cair_mlc/100. ! [molec/cc]
+      WVAP  = RH_arg*(pr_h2o/pr_atm_arg)*cair_mlc_arg/100. ! [molec/cc]
 
       return
       END FUNCTION WATER_VAPOR
@@ -660,19 +671,19 @@
       use module_data_mosaic_asect
       use module_data_mosaic_cloud
 
-      use module_data_mosaic_pmcmos, only:  &
-           temp_profile_fname, pblh_profile_fname,  &
-           aer_init_fname, aer_back_fname, aer_emit_fname,  &
-           gas_init_fname, gas_back_fname, gas_emit_fname,  &
+      use module_data_mosaic_pmcmos, only:  
+     &     temp_profile_fname, pblh_profile_fname,  
+     &     aer_init_fname, aer_back_fname, aer_emit_fname,  
+     &     gas_init_fname, gas_back_fname, gas_emit_fname,  
            !BSINGH - 05/28/2013(RCE updates)
-           aer_emit_adjust_fac,  &
-           msolar_pmcmos_dtshift,  &
-           pmcmos_inputfile_version, pmcmos_inputfile_directory
+     &     aer_emit_adjust_fac,  
+     &     msolar_pmcmos_dtshift,  
+     &     pmcmos_inputfile_version, pmcmos_inputfile_directory
       !BSINGH - 05/28/2013(RCE updates ENDS)
       use module_pmcmos_init, only:  pmcmos_init
       
-      use module_sect_iface, only:  &!BSINGH - 05/28/2013(RCE updates)
-           sect_iface_allocate_memory
+      use module_sect_iface, only:  !BSINGH - 05/28/2013(RCE updates)
+     &     sect_iface_allocate_memory
 
       USE TIME_MOD, ONLY : GET_TS_CHEM
 !
@@ -701,14 +712,14 @@
       integer k
       integer noffset, nsize_aer_tmp
       !BSINGH - 05/28/2013(RCE updates ENDS)
-      real(r8) :: tmpa, tmpb, dt_min
+      real(r8) :: tmpa, tmpb
 
       !=================================================================
       ! INIT_MOSAIC  begins here!
       !=================================================================
 
       ! Initialize MOSAIC data modules
-      CALL init_data_modules
+      CALL init_data_modules_inbuilt
 
       ! Set the MOSAIC time step to match the chemistry time step
       dt_min = 1.d0*GET_TS_CHEM()
@@ -782,7 +793,7 @@
       maxd_asize = nsize_aer_tmp
  
       ! The total length of the "cnn" array 
-      ntot_used = ngas_max + naer_max + ncldtot*ncldbin_used
+      ntot_used = ngas_max + naer_max + ncld_tot*ncldbin_used
 
       ! Allocate memory? This is a dummy routine in MOSAIC
       !call mosaic_allocate_memory( 0 )
@@ -979,9 +990,919 @@
       !    Aerosol dry diameters
       !    Aerosol geometric standard deviations
       !    Aerosol number densities
-      CALL INIT_AEROSOL
+      CALL INIT_AEROSOL_INBUILT
 
       END SUBROUTINE INIT_MOSAIC
-
 !EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: INIT_DATA_MODULES_INBUILT
+!
+! !DESCRIPTION: Subroutine INIT\_DATA\_MODULES\_INBUILT initializes MOSAIC
+!  arrays and variables that would usually be initialized internally.
+!\\
+!\\
+! !INTERFACE:
+!
+      subroutine init_data_modules_inbuilt
+!
+!   place various constant or initial values into common
+      use module_data_mosaic_main
+      use module_data_mosaic_gas
+      use module_data_mosaic_aero
+      use module_data_mosaic_cloud
+
+      implicit none
+
+!
+! !INPUT PARAMETERS:
+!
+!
+! !INPUT/OUTPUT PARAMETERS: 
+!
+!
+! !OUTPUT PARAMETERS:
+!
+!
+! !REMARKS:
+!  Original v4.1a MOSAIC implementation into GEOS-Chem by
+!  Sebastian D. Eastham and Jessica Kunke (SDE, JK, 2014-11-13)
+! 
+! !REVISION HISTORY: 
+!  29 Nov 2014 - S. D. Eastham - Initial version. Code taken directly
+!                                from init_data_modules.f90 in the
+!                                MOSAIC main function directory
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !LOCAL VARIABLES:
+!
+
+      !=================================================================
+      ! INIT_MOSAIC  begins here!
+      !=================================================================
+
+!--------------------------------------------------
+!     define fundamental constants...
+       avogad	= 6.02217e+23
+
+!      pi	= 3.141592654
+!      deg2rad	= 0.017453293
+       pi	= 4.0_r8 * atan( 1.0_r8 )
+       piover4	= pi/4.0_r8
+       piover6	= pi/6.0_r8
+       deg2rad	= pi/180.0_r8
+       third	= 1.0_r8/3.0_r8
+
+!---------------------------------
+! define species indices
+!
+! species in inorganic chemistry
+       kh2so4		=  1
+       khno3		=  2
+       khcl		=  3
+       knh3		=  4
+       kno		=  5
+       kno2		=  6
+       kno3		=  7
+       kn2o5		=  8
+       khono		=  9
+       khno4		= 10
+       ko3		= 11
+       ko1d		= 12
+       ko3p		= 13
+       koh		= 14
+       kho2		= 15
+       kh2o2		= 16
+       kco		= 17
+       kso2		= 18
+!
+! species in methane, ethane, formaldehyde chemistry
+       kch4		= 19
+       kc2h6		= 20
+       kch3o2		= 21
+       kethp		= 22
+       khcho		= 23
+       kch3oh		= 24
+       kanol		= 25
+       kch3ooh		= 26
+       kethooh		= 27
+       kald2		= 28
+       khcooh		= 29
+       krcooh		= 30
+       kc2o3		= 31
+       kpan		= 32
+       karo1		= 33	! soa prec 1
+       karo2		= 34	! soa prec 2
+       kalk1		= 35	! soa prec 3
+       kole1		= 36	! soa prec 4
+       kapi1		= 37	! soa prec 5
+       kapi2		= 38	! soa prec 6
+       klim1		= 39	! soa prec 7
+       klim2		= 40	! soa prec 8
+!
+! species in hc1 mechanism. initialize indices to zero
+       kpar		= 41
+       kaone		= 42
+       kmgly		= 43
+       keth		= 44
+       kolet		= 45
+       kolei		= 46
+       ktol		= 47
+       kxyl		= 48
+       kcres		= 49
+       kto2		= 50
+       kcro		= 51
+       kopen 		= 52
+       konit		= 53
+       krooh		= 54
+       kro2		= 55
+       kano2		= 56
+       knap		= 57
+       kxo2		= 58
+       kxpar		= 59
+!
+! species in hc2 mechanism. initialize indices to zero
+       kisop		= 60
+       kisoprd		= 61
+       kisopp		= 62
+       kisopn		= 63
+       kisopo2		= 64
+       kapi		= 65
+       klim		= 66
+
+! species in dms mechanism. initialize indices to zero
+       kdms		= 67
+       kmsa		= 68
+       kdmso		= 69
+       kdmso2		= 70
+       kch3so2h		= 71
+       kch3sch2oo	= 72
+       kch3so2		= 73
+       kch3so3		= 74
+       kch3so2oo	= 75
+       kch3so2ch2oo	= 76
+       ksulfhox		= 77
+
+! aerosol bin: (24 species=bin)
+       knum_a		=  1
+       kdpdry_a		=  2
+       ksigmag_a	=  3
+       kjhyst_a		=  4
+       kwater_a		=  5
+       kso4_a		=  6
+       kno3_a		=  7
+       kcl_a		=  8
+       knh4_a		=  9
+       kmsa_a		= 10
+       karo1_a		= 11
+       karo2_a		= 12
+       kalk1_a		= 13
+       kole1_a		= 14
+       kapi1_a		= 15
+       kapi2_a		= 16
+       klim1_a		= 17
+       klim2_a		= 18
+       kco3_a		= 19
+       kna_a		= 20
+       kca_a		= 21
+       koin_a		= 22
+       koc_a		= 23
+       kbc_a		= 24
+
+
+! cloud mode: 1-ncldmode (13=mode)
+       knum_c		=  1
+       kwater_c		=  2
+       kso4_c		=  3
+       kno3_c		=  4
+       kcl_c		=  5
+       knh4_c		=  6
+       koc_c		=  7
+       kmsa_c		=  8
+       kco3_c		=  9
+       kna_c		= 10
+       kca_c		= 11
+       kbc_c		= 12
+       koin_c		= 13
+!
+!
+! regime-dependent chemistry definitions
+!
+       iregime		=  1
+!
+!     GAS
+!
+       ih2so4		=  1
+       ihno3		=  2
+       ihcl		=  3
+       inh3		=  4
+       ino		=  5
+       ino2		=  6
+       ino3		=  7
+       in2o5		=  8
+       ihono		=  9
+       ihno4		= 10
+       io3		= 11
+       io1d		= 12
+       io3p		= 13
+       ioh		= 14
+       iho2		= 15
+       ih2o2		= 16
+       ico		= 17
+       iso2		= 18
+!
+! species in methane, ethane, formaldehyde chemistry
+       ich4		= 19
+       ic2h6		= 20
+       ich3o2		= 21
+       iethp		= 22
+       ihcho		= 23
+       ich3oh		= 24
+       ianol		= 25
+       ich3ooh		= 26
+       iethooh		= 27
+       iald2		= 28
+       ihcooh		= 29
+       ircooh		= 30
+       ic2o3		= 31
+       ipan		= 32
+       iaro1		= 33	! soa prec 1
+       iaro2		= 34	! soa prec 2
+       ialk1		= 35	! soa prec 3
+       iole1		= 36	! soa prec 4
+       iapi1		= 37	! soa prec 5
+       iapi2		= 38	! soa prec 6
+       ilim1		= 39	! soa prec 7
+       ilim2		= 40	! soa prec 8
+!
+! species in hc1 mechanism. initialize indices to zero
+       ipar		= 41
+       iaone		= 42
+       imgly		= 43
+       ieth		= 44
+       iolet		= 45
+       iolei		= 46
+       itol		= 47
+       ixyl		= 48
+       icres		= 49
+       ito2		= 50
+       icro		= 51
+       iopen		= 52
+       ionit		= 53
+       irooh		= 54
+       iro2		= 55
+       iano2		= 56
+       inap		= 57
+       ixo2		= 58
+       ixpar		= 59
+!
+! species in hc2 mechanism. initialize indices to zero
+       iisop		= 60
+       iisoprd		= 61
+       iisopp		= 62
+       iisopn		= 63
+       iisopo2		= 64
+       iapi		= 65
+       ilim		= 66
+
+! species in dms mechanism. initialize indices to zero
+       idms		= 67
+       imsa		= 68
+       idmso		= 69
+       idmso2		= 70
+       ich3so2h		= 71
+       ich3sch2oo	= 72
+       ich3so2		= 73
+       ich3so3		= 74
+       ich3so2oo	= 75
+       ich3so2ch2oo	= 76
+       isulfhox		= 77
+
+! alkylperoxy radical indices for parameterized permutation reactions
+       jch3o2		=  1
+       jethp		=  2
+       jro2		=  3
+       jc2o3		=  4
+       jano2		=  5
+       jnap		=  6
+       jisopp		=  7
+       jisopn		=  8
+       jisopo2		=  9
+       jxo2		= 10
+
+! photolyzing species indices
+       jphoto_no2	=  1
+       jphoto_no3	=  2
+       jphoto_hono	=  3
+       jphoto_hno3	=  4
+       jphoto_hno4	=  5
+       jphoto_n2o5	=  6
+       jphoto_o3a	=  7
+       jphoto_o3b	=  8
+       jphoto_h2o2	=  9
+       jphoto_hchoa	= 10
+       jphoto_hchob	= 11
+       jphoto_ch3ooh	= 12
+       jphoto_ethooh	= 13
+       jphoto_ald2	= 14
+       jphoto_aone	= 15
+       jphoto_mgly	= 16
+       jphoto_open	= 17
+       jphoto_rooh	= 18
+       jphoto_onit	= 19
+       jphoto_isoprd	= 20
+
+
+!
+!     CLOUD
+!
+! cloud (local): used for total and undissociated species
+       iso4_c		=  1
+       ino3_c		=  2
+       icl_c		=  3
+       inh4_c		=  4
+       ioc_c		=  5
+       imsa_c		=  6
+       ico2_c		=  7
+       ina_c		=  8
+       ica_c		=  9
+       ibc_c		= 10
+       ioin_c		= 11
+       iso2_c		= 12
+       ihono_c		= 13
+       ih2o2_c		= 14
+       ich3ooh_c	= 15
+       ihcooh_c		= 16
+       ircooh_c		= 17
+       ihcho_c		= 18
+       io3_c		= 19
+       iho2_c		= 20	! don't actually exist in cloud (surf rxn only)
+       ino2_c		= 21	! don't actually exist in cloud (surf rxn only)
+       ino3r_c		= 22	! don't actually exist in cloud (surf rxn only)
+       in2o5_c		= 23	! don't actually exist in cloud (surf rxn only)
+
+! cloud ionic species
+       jh_c		=  1
+       jnh4_c		=  2
+       jna_c		=  3
+       jhso4_c		=  4
+       jso4_c		=  5
+       jno3_c		=  6
+       jcl_c		=  7
+       jno2_c		=  8
+       jhso3_c		=  9
+       jso3_c		= 10
+       jhco3_c		= 11
+       jco3_c		= 12
+       jho2_c		= 13
+       jhcoo_c		= 14
+       jrcoo_c		= 15
+       jmsa_c		= 16
+       joh_c		= 17
+       jch2oh2_c	= 18
+
+
+      return
+      end subroutine init_data_modules_inbuilt
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: INIT_AEROSOL_INBUILT
+!
+! !DESCRIPTION: Subroutine INIT\_AEROSOL\_INBUILT initializes aerosol
+!  arrays and variables that would usually be initialized internally.
+!\\
+!\\
+! !INTERFACE:
+!
+      subroutine init_aerosol_inbuilt
+        !
+        !   does initialization of variables in module_data_mosaic_asect
+        !
+      use module_data_mosaic_kind, only: r8
+      use module_data_mosaic_main, only: 
+     &    cnn, ipmcmos, 
+     &    kdpdry_a, kjhyst_a, knum_a, ksigmag_a, kwater_a, 
+     &    lun_sect_171, 
+     &    m_partmc_mosaic, naer_tot, ngas_max, ntot_max, 
+     &    pi, species
+      use module_data_mosaic_aero, only: 
+     &    aer_name, 
+     &    dhi_aersize_init, dlo_aersize_init, 
+     &    d_mdrh_dim2, jsulf_poor_num, jsulf_rich_num, mdrh_t_num, 
+     &    iso4_a,     ino3_a,     icl_a,     inh4_a,     ico3_a,  
+     &    imsa_a,     ina_a,      ica_a,     ioc_a,      ibc_a,   
+     &    ioin_a,     iaro1_a,    iaro2_a,   ialk1_a,    iole1_a,   
+     &    iapi1_a,    iapi2_a,    ilim1_a,   ilim2_a, 
+     &    maersize_init_flag1, mhyst_method, mmodal, 
+     &    method_atype_md1_init, method_atype_md2_init, 
+     &    msectional, msectional_flag2, msize_framework, munstructured, 
+     &    nbin_a, 
+     &    naer, dens_aer_mac, mw_aer_mac, kappa_aer_mac, 
+     &    xcuthi_atype_md1_init, xcutlo_atype_md1_init, 
+     &    xcuthi_atype_md2_init, xcutlo_atype_md2_init
+      use module_data_mosaic_asect, only: 
+     &    ai_phase, 
+     &    dcen_sect, dcut_sect, dlo_sect, dhi_sect, 
+     &    dens_aer, hygro_aer, mw_aer, name_aer, sigmag_aer, 
+     &    dens_mastercomp_aer, hygro_mastercomp_aer, 
+     &    mw_mastercomp_aer, name_mastercomp_aer, 
+     &    ibin_of_isize_itype, isize_of_ibin, itype_of_ibin, 
+     &    itype_md1_of_itype, itype_md2_of_itype, itype_of_itype_md1md2,
+     &    lptr_so4_aer, lptr_msa_aer, lptr_no3_aer, lptr_cl_aer, 
+     &    lptr_co3_aer, lptr_nh4_aer, lptr_na_aer, lptr_ca_aer, 
+     &    lptr_oin_aer, lptr_oc_aer, lptr_bc_aer, 
+     &    hyswptr_aer, massptr_aer, mastercompptr_aer, numptr_aer,
+     &    waterptr_aer, 
+     &    mastercompindx_so4_aer, mastercompindx_no3_aer, 
+     &    mastercompindx_cl_aer, 
+     &    mastercompindx_msa_aer, mastercompindx_co3_aer, 
+     &    mastercompindx_nh4_aer, 
+     &    mastercompindx_na_aer, mastercompindx_ca_aer, 
+     &    mastercompindx_oin_aer, 
+     &    mastercompindx_oc_aer, mastercompindx_bc_aer, 
+     &    maxd_acomp, maxd_asize, maxd_atype, 
+     &    ncomp_aer, ncomp_plustracer_aer, nphase_aer, nsize_aer, 
+     &    ntot_mastercomp_aer, ntype_aer, ntype_md1_aer, ntype_md2_aer, 
+     &    volumcen_sect, volumcut_sect, volumhi_sect, volumlo_sect, 
+     &    xcut_atype_md1, xcut_atype_md2
+      !qak
+      !qak
+      use module_pmcmos_aer, only: pmcmos_init_aerosol
+      use module_mosaic_init, only: mosaic_init
+      
+      implicit none
+      
+      !Local Variables
+      integer :: ibin, iphase, isize, itype, it1, it2
+      integer ::  l, ll, lunaa, noffset
+      real(r8) :: tmpa, tmpb, tmpc, tmpn
+      character(len=5) :: tmpch5
+      
+      !BSINGH - load_mosaic_parameters is now called through mosaic_init
+      !         I commented out the following call
+      
+      !call load_mosaic_parameters(nmax_ASTEM,b_mtem,zc,za,b_zsr,a_zsr,aw_min,        &
+      !     mw_electrolyte,dens_electrolyte,partial_molar_vol,MW_c,MW_a,mw_aer_mac,   &
+      !     dens_aer_mac,kappa_aer_mac,dens_comp_a,mw_comp_a,ref_index_a,rtol_mesa,   &
+      !     jsalt_index,jsulf_poor,jsulf_rich,Nmax_mesa,d_mdrh)
+      
+      call mosaic_init 
+      
+      ! check for valid msize_framework
+      if ((msize_framework /= mmodal        ) .and. 
+     &     (msize_framework /= munstructured ) .and. 
+     &     (msize_framework /= msectional    )) then
+         write(*,'(2a,2(1x,i10))') 
+     &        '*** init_aerosol fatal error - ', 
+     &        'bad msize_framework = ', msize_framework
+         stop
+      end if
+      
+      ! check misc flags
+      if ((mhyst_method < 1) .or. (mhyst_method > 4)) then !BSINGH - 05/28/2013(RCE updates)
+         write(*,'(2a,2(1x,i10))') 
+     &        '*** init_aerosol fatal error - ', 
+     &        'bad mhyst_method = ', mhyst_method
+         stop
+      end if
+      
+      
+      !BSINGH - 05/28/2013(RCE updates)
+      ! check naer and naer_tot
+      if ((naer /= 19) .or. (naer_tot /= 24)) then
+         write(*,'(2a,2(1x,i10))') 
+     &     '*** init_aerosol fatal error - ', 
+     &     'expecting naer=19 & naer_tot=24 but they = ', naer, naer_tot
+         stop
+      end if
+      
+      
+      ! set names for cnn array
+      do l = ngas_max+1, ntot_max
+         write( species(l), '(a,i9.9)' ) 's', l
+      end do
+      do ibin = 1, nbin_a
+         noffset = ngas_max + naer_tot*(ibin - 1)
+         write(tmpch5,'(a,i3.3)') '_a', mod(ibin,1000)
+         species(noffset+knum_a   ) = 'num'    // tmpch5
+         species(noffset+kdpdry_a ) = 'dpdry'  // tmpch5
+         species(noffset+ksigmag_a) = 'sigmag' // tmpch5
+         species(noffset+kjhyst_a ) = 'jhyst'  // tmpch5
+         species(noffset+kwater_a ) = 'water'  // tmpch5
+         do l = 1, naer
+            species(noffset+5+l) = trim(aer_name(l)) // tmpch5
+         end do
+      end do
+      
+      
+      !
+      ! following is primarily for sectional framework,
+      !    but some of it may be useful for mosaic box-model unstructured
+      ! it uses the module_data_mosaic_asect arrays,
+      !    so it does not work for partmc_moscic
+      !
+      if (m_partmc_mosaic > 0) return
+      !BSINGH - 05/28/2013(RCE updates ENDS)
+      
+      
+      
+      
+      
+      
+      
+      ! check for valid ntype_aer and nsize_aer(:)
+      if ((ntype_aer < 1) .or. (ntype_aer > maxd_atype)) then
+         write(*,'(2a,2(1x,i10))') 
+     &        '*** init_aerosol fatal error - ', 
+     &        'too big/small ntype_aer = ', ntype_aer
+         stop
+      end if
+      
+      do itype = 1, ntype_aer
+         if ((nsize_aer(itype) < 1) .or. 
+     &        (nsize_aer(itype) > maxd_asize)) then
+            write(*,'(2a,2(1x,i10))') 
+     &           '*** init_aerosol fatal error - ', 
+     &           'too big/small nsize_aer = ', nsize_aer(itype), itype
+            stop
+         end if
+         if (nsize_aer(itype) /= nsize_aer(1)) then
+            write(*,'(2a,2(1x,i10))') 
+     &           '*** init_aerosol fatal error - ', 
+     &           'non-constant nsize_aer = ', nsize_aer(itype), itype
+            stop
+         end if
+      end do
+      
+      ! phases -- only 1 for now
+      nphase_aer = 1
+      ai_phase = 1
+      
+      
+      ! species naer vs. maxd_acomp !BSINGH - 05/28/2013(RCE updates -Deleted an 'if' block here)
+      if (naer > maxd_acomp) then
+         write(*,'(2a,2(1x,i10))') 
+     &        '*** init_aerosol fatal error - ', 
+     &        'naer > maxd_acomp = ', naer, maxd_acomp
+         stop
+      end if
+      
+      ! set species pointers and properties !BSINGH - 05/28/2013(RCE updates - Added this comment)
+      dens_mastercomp_aer(:) = 0.0
+      mw_mastercomp_aer(:) = 0.0
+      hygro_mastercomp_aer(:) = 0.0
+      
+      ntot_mastercomp_aer = naer
+      do ll = 1, naer
+         dens_mastercomp_aer(ll) = dens_aer_mac(ll)
+         mw_mastercomp_aer(  ll) = mw_aer_mac(ll)
+         name_mastercomp_aer(ll) = aer_name(ll)
+      end do
+      mastercompindx_so4_aer = iso4_a
+      mastercompindx_no3_aer = ino3_a
+      mastercompindx_cl_aer  = icl_a
+      mastercompindx_msa_aer = imsa_a
+      mastercompindx_co3_aer = ico3_a
+      mastercompindx_nh4_aer = inh4_a
+      mastercompindx_na_aer  = ina_a
+      mastercompindx_ca_aer  = ica_a
+      mastercompindx_oin_aer = ioin_a
+      mastercompindx_oc_aer  = ioc_a
+      mastercompindx_bc_aer  = ibc_a
+      
+      ! set hygroscopicities that are (temporarily) used
+      !    by sectional routines for hysteresis water
+      ! for consistency with the mosaic water uptake,
+      !    only the inorganic salts/acids have non-negligible values
+      hygro_mastercomp_aer(:) = 1.0e-10
+      hygro_mastercomp_aer( mastercompindx_so4_aer ) = 0.5
+      hygro_mastercomp_aer( mastercompindx_nh4_aer ) = 0.5
+      hygro_mastercomp_aer( mastercompindx_no3_aer ) = 0.5
+      hygro_mastercomp_aer( mastercompindx_msa_aer ) = 0.58
+      hygro_mastercomp_aer( mastercompindx_na_aer  ) = 1.16
+      hygro_mastercomp_aer( mastercompindx_cl_aer  ) = 1.16
+      hygro_mastercomp_aer( mastercompindx_ca_aer  ) = 0.1
+      hygro_mastercomp_aer( mastercompindx_co3_aer ) = 0.1
+      
+      ! 2010-02-26 - get hygro from mosaic kappa, always
+      ! 2010-03-28 - only do this when ipmcmos > 0,
+      !    to allow backwards compatibility with mos27a
+      if (ipmcmos > 0) then
+         do ll = 1, naer
+            hygro_mastercomp_aer(ll) = kappa_aer_mac(ll)
+         end do
+      end if
+      
+      
+      ibin_of_isize_itype(:,:) = -999888777
+      isize_of_ibin(:) = -999888777
+      itype_of_ibin(:) = -999888777
+      itype_of_itype_md1md2(:,:) = -999888777
+      itype_md1_of_itype(:) = -999888777
+      itype_md2_of_itype(:) = -999888777
+      
+      ncomp_aer(:) = 0
+      ncomp_plustracer_aer(:) = 0
+      numptr_aer(:,:,:) = -999888777
+      waterptr_aer(:,:) = -999888777
+      hyswptr_aer(:,:) = -999888777
+      massptr_aer(:,:,:,:) = -999888777
+      mastercompptr_aer(:,:) = -999888777
+      
+      dens_aer(:,:) = 0.0
+      mw_aer(:,:) = 0.0
+      hygro_aer(:,:) = 0.0
+      
+      iphase = ai_phase
+      ibin = 0
+      do itype = 1, ntype_aer
+         ncomp_aer(itype) = naer
+         ncomp_plustracer_aer(itype) = naer
+         do isize = 1, nsize_aer(itype)
+            ibin = ibin + 1
+            noffset = ngas_max + naer_tot*(ibin - 1)
+            numptr_aer(isize,itype,iphase) = noffset + knum_a
+            waterptr_aer(isize,itype) = noffset + kwater_a
+            hyswptr_aer(isize,itype) = noffset + kjhyst_a
+            do ll = 1, ncomp_aer(itype)
+               massptr_aer(ll,isize,itype,iphase) = 
+     &              noffset + (naer_tot-naer) + ll
+               mastercompptr_aer(ll,itype) = ll
+               name_aer( ll,itype) = name_mastercomp_aer(ll)
+               dens_aer( ll,itype) = dens_mastercomp_aer(ll)
+               mw_aer(   ll,itype) = mw_mastercomp_aer(ll)
+               hygro_aer(ll,itype) = hygro_mastercomp_aer(ll)
+            end do
+            !BSINGH - 05/28/2013(RCE updates)
+            lptr_so4_aer(isize,itype,iphase) = 
+     &                        massptr_aer(iso4_a,isize,itype,iphase)
+            lptr_msa_aer(isize,itype,iphase) = 
+     &                        massptr_aer(imsa_a,isize,itype,iphase)
+            lptr_no3_aer(isize,itype,iphase) = 
+     &                        massptr_aer(ino3_a,isize,itype,iphase)
+            lptr_cl_aer( isize,itype,iphase) = 
+     &                        massptr_aer(icl_a ,isize,itype,iphase)
+            lptr_co3_aer(isize,itype,iphase) = 
+     &                        massptr_aer(ico3_a,isize,itype,iphase)
+            lptr_nh4_aer(isize,itype,iphase) = 
+     &                        massptr_aer(inh4_a,isize,itype,iphase)
+            lptr_na_aer( isize,itype,iphase) = 
+     &                        massptr_aer(ina_a ,isize,itype,iphase)
+            lptr_ca_aer( isize,itype,iphase) = 
+     &                        massptr_aer(ica_a ,isize,itype,iphase)
+            lptr_oin_aer(isize,itype,iphase) = 
+     &                        massptr_aer(ioin_a,isize,itype,iphase)
+            lptr_oc_aer( isize,itype,iphase) = 
+     &                        massptr_aer(ioc_a ,isize,itype,iphase)
+            lptr_bc_aer( isize,itype,iphase) = 
+     &                        massptr_aer(ibc_a ,isize,itype,iphase)
+            !BSINGH - 05/28/2013(RCE updates ENDS)
+      
+      
+            ibin_of_isize_itype(isize,itype) = ibin
+            isize_of_ibin(ibin) = isize
+            itype_of_ibin(ibin) = itype
+         end do ! isize
+      end do ! itype
+      
+      
+      ! generate initial dry diameters automatically
+      dlo_sect( :,:) = 0.0
+      dhi_sect( :,:) = 0.0
+      dcen_sect(:,:) = 0.0
+      dcut_sect(:,:) = 0.0
+      volumlo_sect( :,:) = 0.0
+      volumhi_sect( :,:) = 0.0
+      volumcen_sect(:,:) = 0.0
+      volumcut_sect(:,:) = 0.0
+      
+      if ((maersize_init_flag1 == 2) .or. 
+     &      (msize_framework == msectional)) then
+         if ((dlo_aersize_init <= 0.0) .or. 
+     &         (dlo_aersize_init >= dhi_aersize_init)) then
+            write(*,'(2a,1p,2e11.3)') 
+     &            '*** init_aerosol fatal error - ', 
+     &            'bad dlo/hi_aersize_init =', 
+     &            dlo_aersize_init, dhi_aersize_init
+            stop
+         end if
+      
+         tmpa = log(dlo_aersize_init)
+         tmpb = (log(dhi_aersize_init) - tmpa)/nsize_aer(1)
+         ibin = 0
+         do itype = 1, ntype_aer
+            do isize = 1, nsize_aer(itype)
+               ! dlo_sect & dhi_sect are bin lower/upper bound dry diam (cm)
+               dlo_sect( isize,itype) = exp(tmpa + (isize-1  )*tmpb)*1.0e-4_r8
+               dhi_sect( isize,itype) = exp(tmpa + (isize    )*tmpb)*1.0e-4_r8
+               dcen_sect(isize,itype) = exp(tmpa + (isize-0.5)*tmpb)*1.0e-4_r8
+               dcut_sect(isize,itype) = dhi_sect(isize,itype)
+      
+               volumlo_sect( isize,itype) = (dlo_sect( isize,itype)**3)
+     &                                               *pi/6.0_r8
+               volumhi_sect( isize,itype) = (dhi_sect( isize,itype)**3)
+     &                                               *pi/6.0_r8
+               volumcen_sect(isize,itype) = (dcen_sect(isize,itype)**3)
+     &                                               *pi/6.0_r8
+               volumcut_sect(isize,itype) = volumhi_sect(isize,itype)
+      
+               ibin = ibin + 1
+               if (maersize_init_flag1 == 2) then
+                  noffset = ngas_max + naer_tot*(ibin - 1)
+                  ! cnn(noffset + kdpdry_a) is bin initial dry diameter (micron)
+                  cnn(noffset + kdpdry_a) = exp(tmpa + (isize-0.5)*tmpb)
+               end if
+            end do ! isize
+      
+            dcut_sect(0,itype) = dlo_sect(1,itype)
+            volumcut_sect(0,itype) = volumlo_sect(1,itype)
+         end do ! itype
+      
+      end if
+      
+      
+      ! sigmag
+      do itype = 1, ntype_aer
+         do isize = 1, nsize_aer(itype)
+            ibin = ibin_of_isize_itype(isize,itype)
+            noffset = ngas_max + naer_tot*(ibin - 1)
+            sigmag_aer(isize,itype) = cnn(noffset + ksigmag_a)
+            if (msize_framework == munstructured ) then
+               !           assume monodisperse for each "bin"
+               sigmag_aer(isize,itype) = 1.0
+            else if (msize_framework == msectional) then
+               !           sigmag based on width of bin - following is same as
+               !           log(sigmag) = [log(dhi) - log(dlo)]/sqrt(12)
+               sigmag_aer(isize,itype) = 
+     &              (dhi_sect(isize,itype)/dlo_sect(isize,itype))**0.289
+            end if
+            cnn(noffset + ksigmag_a) = sigmag_aer(isize,itype)
+         end do ! isize
+      end do ! itype
+      
+      
+      ! number
+      !    for modal or unstructured framework, the input file value should be used !BSINGH - 05/28/2013(RCE updates - Modified comment)
+      !    for sectional, initialize it correctly on the first time step
+      !*** this seems to work, but code should really be changed so that
+      !       aerosol number is initialized BEFORE the first time step
+      if (msize_framework == msectional) then !BSINGH - 05/28/2013(RCE updates)
+         do itype = 1, ntype_aer
+            do isize = 1, nsize_aer(itype)
+      !        cnn(numptr_aer(isize,itype,iphase)) = 0.0
+      ! 29-sep-2014 - only set number to zero here if
+      !     its value is negative, or
+      !     its value is below that obtained from dry-volume and volumhi_sect, or
+      !     its value is above that obtained from dry-volume and volumlo_sect
+               if (cnn(numptr_aer(isize,itype,iphase)) <= 0.0) then
+                  cnn(numptr_aer(isize,itype,iphase)) = 0.0
+               else
+                  tmpa = 0.0
+                  do ll = 1, ncomp_aer(itype)
+                     tmpa = tmpa 
+     &           + max(0.0_r8,cnn(massptr_aer(ll,isize,itype,iphase))) 
+     &           * 1.0e-12*mw_aer(ll,itype)/dens_aer(ll,itype)
+                     ! the 1.0e-12 factor converts cnn from umol/m3 to mol/cm3
+                     ! then tmpa is cm3-dry-aerosol/cm3-air
+                  end do
+                  tmpn = cnn(numptr_aer(isize,itype,iphase))
+                  tmpb = tmpa/volumlo_sect(isize,itype)
+                  tmpc = tmpa/volumhi_sect(isize,itype)
+                  if ( tmpn < 0.999*tmpc .or. tmpn > 1.001*tmpb ) then
+                     cnn(numptr_aer(isize,itype,iphase)) = 0.0
+                  end if
+               end if
+            end do ! isize
+         end do ! itype
+      endif!BSINGH - 05/28/2013(RCE updates)
+      
+      !BSINGH - 05/28/2013(RCE updates- Got rid of two do constructs here)
+      
+      
+      
+      ! 3d sectional stuff
+      if (msectional_flag2 > 0) then
+      
+         ! mappings between itype and (itype_md1,itype_md2)
+         itype = 0
+         do it2 = 1, ntype_md2_aer
+            do it1 = 1, ntype_md1_aer
+               itype = itype + 1
+               itype_of_itype_md1md2(it1,it2) = itype
+               itype_md1_of_itype(itype) = it1
+               itype_md2_of_itype(itype) = it2
+            end do
+         end do
+      
+         ! cut values for bc mass fraction
+         ! when method_atype_md1_init <= 1, they are read from input file
+         ! otherwise, they have a uniform linear spacing between the
+         !    specified xcutlo & xcuthi values
+         if (method_atype_md1_init >= 2) then
+            tmpa = xcutlo_atype_md1_init
+            tmpb = (xcuthi_atype_md1_init - tmpa) / ntype_md1_aer
+            do it1 = 0, ntype_md1_aer
+               xcut_atype_md1(it1) = tmpa + tmpb*it1
+            end do
+         else
+            tmpb = 1.0
+         end if
+         if ( (tmpb <= 0.0) .or. 
+     &         (xcut_atype_md1(1) < 0.0) .or. 
+     &         (xcut_atype_md1(ntype_md1_aer) < 0.1) ) then
+            write(*,'(2a)') 
+     &            '*** init_aerosol fatal error - ', 
+     &            'bad xcut_atype_md1 ='
+            write(*,'(1p,7e11.3)') 
+     &           xcut_atype_md1(0:ntype_md1_aer)
+            stop
+         end if
+      
+         ! cut values for hygroscopicity
+         ! when method_atype_md2_init <= 1, they are read from input file
+         ! otherwise, they have a uniform logarithmic spacing between the
+         !    specified xcutlo & xcuthi values
+         if (method_atype_md2_init >= 2) then
+            tmpa = log(xcutlo_atype_md2_init)
+            tmpb = (log(xcuthi_atype_md2_init) - tmpa) / ntype_md2_aer
+            do it2 = 0, ntype_md2_aer
+               xcut_atype_md2(it2) = exp( tmpa + tmpb*it2 )
+            end do
+         else
+            tmpb = 1.0
+         end if
+         if ( (tmpb <= 0.0) .or. 
+     &         (xcut_atype_md2(0) <= 0.0) .or. 
+     &         (xcut_atype_md2(1) < 0.0001) .or. 
+     &         (xcut_atype_md2(ntype_md2_aer) < 0.1) ) then
+            write(*,'(2a)') 
+     &            '*** init_aerosol fatal error - ', 
+     &            'bad xcut_atype_md2 ='
+            write(*,'(1p,7e11.3)') 
+     &            xcut_atype_md2(0:ntype_md2_aer)
+            stop
+         end if
+      
+      else
+         xcut_atype_md1(0:1) = (/ 0.0_r8, 1.0_r8 /)
+         xcut_atype_md2(0:1) = (/ 0.1_r8, 1.0_r8 /)
+      
+      end if ! (msectional_flag2 > 0)
+      
+      
+      ! diagnostic output
+      lunaa = lun_sect_171
+      if (lunaa > 0) then
+      
+         write(lunaa,'(//a,i5)') 'ntot_mastercomp_aer', 
+     &                            ntot_mastercomp_aer
+         do ll = 1, ntot_mastercomp_aer
+            write(lunaa,'(a,i4,2x,a,1p,4e12.4)') 'll,name,dens,mw,hy', 
+     &            ll, name_mastercomp_aer(ll), dens_mastercomp_aer(ll), 
+     &            mw_mastercomp_aer(ll), hygro_mastercomp_aer(ll)
+         end do
+      
+         iphase = ai_phase
+         do itype = 1, ntype_aer
+            write(lunaa,'(//a,2i5)') 'itype, ncomp', itype, 
+     &                                     ncomp_aer(itype)
+            do ll = 1, ncomp_aer(itype)
+               write(lunaa,'(a,i4,2x,a,1p,4e12.4)') 'll,name,dens,mw', 
+     &               ll, name_aer(ll,itype), dens_aer(ll,itype), 
+     &               mw_aer(ll,itype)
+            end do
+            do isize = 1, nsize_aer(itype)
+               write(lunaa,'(/a,5i5)')    'itype,isize,numptr,waterptr',
+     &               itype, isize, numptr_aer(isize,itype,iphase), 
+     &               waterptr_aer(isize,itype)
+               do ll = 1, ncomp_aer(itype)
+                  write(lunaa,'(a,3i5,i7,2x,a)') 
+     &             'itype,isize,ll,massptr,name', 
+     &            itype, isize, ll, massptr_aer(ll,isize,itype,iphase), 
+     &                  name_aer(ll,itype)
+               end do
+            end do
+         end do
+      
+      end if   ! (lunaa > 0)
+      
+      
+      ! pmcmos stuff
+      if (ipmcmos > 0) call pmcmos_init_aerosol(mw_aer_mac,
+     &                              dens_aer_mac,kappa_aer_mac)
+      
+      
+      return
+      end subroutine init_aerosol_inbuilt
+!EOC
+
       END MODULE MOSAIC_MOD

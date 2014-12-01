@@ -1,4 +1,5 @@
-#define MOSAIC_BOX
+!#define MOSAIC_BOX
+#define GEOSCHEM
 module module_mosaic_support
   !Purpose: This module contains subroutines which have codes which depend upon 
   !         the host code (CAM, WRF etc.). #defines are used to seprate codes
@@ -7,6 +8,10 @@ module module_mosaic_support
 #ifdef CAM
   use cam_logfile,           only: iulog
   use abortutils,            only: endrun
+#endif
+#ifdef GEOSCHEM
+  use ERROR_MOD,             ONLY: ERROR_STOP
+  use ERROR_MOD,             ONLY: DEBUG_MSG
 #endif
 
   implicit none
@@ -25,6 +30,9 @@ contains
 
     !Local variables
     character(len=16), parameter :: warn_str = 'MOSAIC WARNING: ' 
+#ifdef GEOSCHEM
+    character(len=255) :: GCMSG
+#endif
 
 #ifdef CAM
     write(iulog,*)warn_str,message
@@ -34,6 +42,10 @@ contains
     write(*,*)warn_str,message
 #endif    
 
+#ifdef GEOSCHEM
+    write(GCMSG,'(a,a)')warn_str,message
+    CALL DEBUG_MSG(trim(adjustl(GCMSG)))
+#endif
 
     
   end subroutine mosaic_warn_mess
@@ -56,7 +68,12 @@ contains
 #ifdef MOSAIC_BOX
     write(*,*)(trim(adjustl(str_to_prnt)))
     stop
-#endif    
+#endif   
+
+#ifdef GEOSCHEM
+    CALL ERROR_STOP(trim(adjustl(str_to_prnt)),'MOSAIC')
+#endif
+
   end subroutine mosaic_err_mess
 
 

@@ -497,6 +497,20 @@ ifeq ($(shell [[ "$(APM)" =~ $(REGEXP) ]] && echo true),true)
 USER_DEFS      += -DAPM
 endif
 
+# %%%%% MOSAIC %%%%%
+REGEXP         :=(^[Yy]|^[Yy][Ee][Ss])
+ifeq ($(shell [[ "$(MOSAIC)" =~ $(REGEXP) ]] && echo true),true)
+USER_DEFS      += -DMOSAIC
+endif
+
+ifeq ($(shell [[ "$(MOSAIC4)" =~ $(REGEXP) ]] && echo true),true)
+USER_DEFS      += -DMOSAIC -DMOSAIC4
+endif
+
+ifeq ($(shell [[ "$(MOSAIC8)" =~ $(REGEXP) ]] && echo true),true)
+USER_DEFS      += -DMOSAIC -DMOSAIC8
+endif
+
 #------------------------------------------------------------------------------
 # Special chemistry settings
 #------------------------------------------------------------------------------
