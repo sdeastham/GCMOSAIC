@@ -1728,6 +1728,21 @@
       WRITE( 6, '(a)' ) '# ISORROPIA TURNED OFF FOR TESTING!!! #'
       WRITE( 6, '(a)' ) REPEAT( '#', 39 )
 #endif
+ 
+      !-------------------------------------------------
+      ! Print msg if MOSAIC is in use
+      !-------------------------------------------------
+#if defined( MOSAIC )
+#if defined( MBULK )
+      WRITE( 6, '(a)' ) REPEAT( '#', 39 )
+      WRITE( 6, '(a)' ) '# USING MOSAIC FOR AERO THERM EQ ONLY #'
+      WRITE( 6, '(a)' ) REPEAT( '#', 39 )
+#else
+      WRITE( 6, '(a)' ) REPEAT( '#', 39 )
+      WRITE( 6, '(a)' ) '# USING MOSAIC SECTIONAL AEROSOLS     #'
+      WRITE( 6, '(a)' ) REPEAT( '#', 39 )
+#endif
+#endif
 
       !-------------------------------------------------
       ! Print msg if ISORROPIA is turned off for debug

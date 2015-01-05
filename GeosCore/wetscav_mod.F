@@ -159,6 +159,24 @@
       INTEGER, PARAMETER   :: NSOLMAX = 262     ! Max # of soluble tracers for TOMAS30 runs
 # endif
 
+#elif defined( MOSAIC )
+#if defined( SOAupdate )
+#if defined( MOSAIC4 )
+      INTEGER, PARAMETER   :: NSOLMAX = 184
+#elif defined( MOSAIC8 )
+      INTEGER, PARAMETER   :: NSOLMAX = 268
+#else
+      INTEGER, PARAMETER   :: NSOLMAX = 121
+#endif
+#else
+#if defined( MOSAIC4 )
+      INTEGER, PARAMETER   :: NSOLMAX = 152
+#elif defined( MOSAIC8 )
+      INTEGER, PARAMETER   :: NSOLMAX = 204
+#else
+      INTEGER, PARAMETER   :: NSOLMAX = 113
+#endif
+#endif
 #else
       ! SOAupdate: Increase NSOLMAX from 60 to 110 for SOA + semivol POA
       !  (jje, mpayer,7/5/11)
@@ -1199,6 +1217,25 @@
 
          ! ND38 index
          ISOL = GET_ISOL( N, N_TRACERS )
+
+#if defined( MOSAIC ) && !defined( MBULK )
+#if defined( MOSAIC4 )
+      ELSE IF ( N == IDTaNUM(1) .or.
+     &          N == IDTaNUM(2) .or.
+     &          N == IDTaNUM(3) .or.
+     &          N == IDTaNUM(4) ) THEN
+#elif defined( MOSAIC8 )
+      ELSE IF ( N == IDTaNUM(1) .or.
+     &          N == IDTaNUM(2) .or.
+     &          N == IDTaNUM(3) .or.
+     &          N == IDTaNUM(4) .or.
+     &          N == IDTaNUM(5) .or.
+     &          N == IDTaNUM(6) .or.
+     &          N == IDTaNUM(7) .or.
+     &          N == IDTaNUM(8) ) THEN
+#endif
+      ! Wet deposition of sectional aerosol
+#endif
 
       !-------------------------------
       ! HBr (liquid phase only)
@@ -7813,6 +7850,17 @@
       USE TRACERID_MOD, ONLY : IDTECIL1,  IDTOCIL1,  IDTOCOB1,IDTDUST1
       USE TOMAS_MOD,    ONLY : IBINS
 #endif
+#if defined( MOSAIC)
+      USE TRACERID_MOD,       ONLY : IDTaNUM,  IDTaHyst, IDTaH2O
+      USE TRACERID_MOD,       ONLY : IDTaSO4,  IDTaNO3,  IDTaNH4
+      USE TRACERID_MOD,       ONLY : IDTaCl,   IDTaCO3,  IDTaMSA
+      USE TRACERID_MOD,       ONLY : IDTaNa,   IDTaCa,   IDTaOC
+      USE TRACERID_MOD,       ONLY : IDTaBC,   IDTaOIN
+      ! SOA not yet implemented
+      USE TRACERID_MOD,       ONLY : IDTaAro1, IDTaAro2, IDTaAlk1
+      USE TRACERID_MOD,       ONLY : IDTaOle1, IDTaApi1, IDTaApi2
+      USE TRACERID_MOD,       ONLY : IDTaLim1, IDTaLim2
+#endif
 !
 ! !INPUT PARAMETERS:
 !
@@ -7853,6 +7901,7 @@
 ! !LOCAL VARIABLES:
 !
       INTEGER :: N, NN
+      CHARACTER(LEN=255) :: ERRMSG
 
       !=================================================================
       ! WETDEPID begins here!
@@ -8308,6 +8357,40 @@
 
 #endif
         
+#if defined( MOSAIC ) && !defined( MBULK )
+         ELSE IF (( N == IDTaNUM(1) ) .and. (NBINMOS >= 1) ) THEN
+            ! Add all MOSAIC mass tracers and number density
+            DO NN = 1, NBINMOS
+                ! Everything but the hysteresis tracer
+                IDWETD(NSOL+1)  = IDTaNUM(NN)
+                IDWETD(NSOL+2)  = IDTaH2O(NN)
+                IDWETD(NSOL+3)  = IDTaSO4(NN)
+                IDWETD(NSOL+4)  = IDTaNO3(NN)
+                IDWETD(NSOL+5)  = IDTaNH4(NN)
+                IDWETD(NSOL+6)  = IDTaCl(NN)
+                IDWETD(NSOL+7)  = IDTaCO3(NN)
+                IDWETD(NSOL+8)  = IDTaMSA(NN)
+                IDWETD(NSOL+9)  = IDTaNa(NN)
+                IDWETD(NSOL+10) = IDTaCa(NN)
+                IDWETD(NSOL+11) = IDTaOC(NN)
+                IDWETD(NSOL+12) = IDTaBC(NN)
+                IDWETD(NSOL+13) = IDTaOIN(NN)
+#if defined( SOAupdate )
+                IF (NAERMOS>14) THEN
+                    IDWETD(NSOL+14) = IDTaAro1(NN)
+                    IDWETD(NSOL+15) = IDTaAro2(NN)
+                    IDWETD(NSOL+16) = IDTaAlk1(NN)
+                    IDWETD(NSOL+17) = IDTaOle1(NN)
+                    IDWETD(NSOL+18) = IDTaApi1(NN)
+                    IDWETD(NSOL+19) = IDTaApi2(NN)
+                    IDWETD(NSOL+20) = IDTaLim1(NN)
+                    IDWETD(NSOL+21) = IDTaLim2(NN)
+                ENDIF
+#endif
+                NSOL         = NSOL + (NAERMOS-1)
+            ENDDO
+#endif
+
          ENDIF
       ENDDO
 
@@ -8319,7 +8402,10 @@
       ! Also check to see if NSOL is larger than the maximum
       ! number of soluble tracers for a particular simulation
       IF ( NSOL > GET_WETDEP_NMAX( am_I_Root, Input_Opt, RC ) ) THEN
-         CALL ERROR_STOP( 'NSOL > NMAX', 'WETDEPID (wetscav_mod.f)')
+         WRITE(ERRMSG,'(a,I3,a,I3,a)') 'NSOL (',NSOL,')> NMAX (',
+     &          GET_WETDEP_NMAX( am_I_Root, Input_Opt, RC ), ')'
+         CALL ERROR_STOP( ERRMSG, 'WETDEPID (wetscav_mod.f)')
+!         CALL ERROR_STOP( 'NSOL > NMAX', 'WETDEPID (wetscav_mod.f)')
       ENDIF
 
       !=================================================================
@@ -8412,7 +8498,7 @@
       ! For fields from Input_Opt
       LOGICAL :: LCARB,  LDUST, LSOA
       LOGICAL :: LSSALT, LSULF, LSPLIT, LCRYST
-      LOGICAL :: LUCX
+      LOGICAL :: LUCX,   LMOSAIC
 
       !=================================================================
       ! GET_WETDEP_NMAX begins here!
@@ -8422,6 +8508,7 @@
       RC        =  GIGC_SUCCESS
 
       ! Copy values from Input_Opt
+      LMOSAIC= Input_Opt%LMOSAIC
       LCARB  = Input_Opt%LCARB
       LDUST  = Input_Opt%LDUST
       LSOA   = Input_Opt%LSOA
@@ -8447,12 +8534,18 @@
 
          NMAX = NMAX + 4                             ! HBr, HOBr, Br2, BrNO3
 
-         IF ( LSULF )    NMAX = NMAX + 8             ! SO2,   SO4,    MSA,
-                                                     ! NH3,   NH4,    NIT
-         IF ( LDUST  )   NMAX = NMAX + NDSTBIN       ! plus # of dust bins
-         IF ( LSSALT )   NMAX = NMAX + 2             ! plus 2 seasalts
+         IF (( LMOSAIC ) .and. (NBINMOS .gt. 1)) THEN
+            NMAX = NMAX + 4                         ! SO2, SO4(g), MSA(g), NH3
+            NMAX = NMAX + 1                         ! HCl
+            NMAX = NMAX + NBINMOS                   ! Aerosol washout
+         ELSE
+            IF ( LSULF )    NMAX = NMAX + 8             ! SO2,   SO4,    MSA,
+                                                        ! NH3,   NH4,    NIT
+            IF ( LDUST  )   NMAX = NMAX + NDSTBIN       ! plus # of dust bins
+            IF ( LSSALT )   NMAX = NMAX + 2             ! plus 2 seasalts
 
-         IF ( LUCX )     NMAX = NMAX + 1             ! SDE 04/17/13: Also HCl
+            IF ( LUCX )     NMAX = NMAX + 1             ! SDE 04/17/13: Also HCl
+         ENDIF
 
          IF ( LSOA ) THEN                            !%% SOA SIMULATION %%
             ! SOAudpate (hotp 7/25/10)

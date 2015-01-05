@@ -102,6 +102,8 @@ MODULE GIGC_Input_Opt_Mod
      !----------------------------------------
      ! AEROSOL MENU fields
      !----------------------------------------
+     LOGICAL                     :: LMOSAIC
+     REAL*8                      :: DRYDIAM
      LOGICAL                     :: LSULF              
      LOGICAL                     :: LCRYST             
      LOGICAL                     :: LCARB              
@@ -821,6 +823,8 @@ CONTAINS
     ALLOCATE( Input_Opt%SALA_REDGE_um( 2 ), STAT=RC )
     ALLOCATE( Input_Opt%SALC_REDGE_um( 2 ), STAT=RC )     
     
+    Input_Opt%LMOSAIC                = .FALSE.
+    Input_Opt%DRYDIAM                = 0.d0
     Input_Opt%LSULF                  = .FALSE.
     Input_Opt%LCRYST                 = .FALSE.
     Input_Opt%LCARB                  = .FALSE.

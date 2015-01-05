@@ -1611,6 +1611,14 @@
 #if defined( TOMAS )
       USE TRACERID_MOD,       ONLY : IDTDUST1
 #endif
+#if defined( MOSAIC )
+      USE CMN_SIZE_MOD,       ONLY : NBINMOS
+      USE TRACERID_MOD,       ONLY : IDTHNO3, IDTHCl
+      USE TRACERID_MOD,       ONLY : IDTaNUM, IDTaSO4, IDTaNO3, IDTaCl
+      USE TRACERID_MOD,       ONLY : IDTaNH4, IDTaCO3, IDTaMSA, IDTaNa
+      USE TRACERID_MOD,       ONLY : IDTaCa,  IDTaOC,  IDTaBC,  IDTaOIN
+      USE TRACERID_MOD,       ONLY : IDTaHyst,IDTaH2O                 
+#endif
 !
 ! !INPUT PARAMETERS:
 !
@@ -1658,7 +1666,7 @@
       LOGICAL            :: LSVPOA,     LDUST,      LDEAD
       LOGICAL            :: LSSALT,     LCRYST,     LDICARB
       LOGICAL            :: LGRAVSTRAT, LHOMNUCNAT, LSOLIDPSC
-      LOGICAL            :: LPSCCHEM,   LSTRATOD
+      LOGICAL            :: LPSCCHEM,   LSTRATOD,   LMOSAIC
       INTEGER            :: N,          T,          I 
       CHARACTER(LEN=255) :: MSG,        LOCATION,   PSC_RST_FILE
 
@@ -1678,99 +1686,107 @@
          CALL ERROR_STOP( MSG, LOCATION )
       ENDIF
 
-      ! Use online sulfate aerosols 
+      ! Use MOSAIC aerosol code 
       CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:1' )
+      READ( SUBSTRS(1:N), * ) LMOSAIC
+
+      ! Aerosol mean dry diameter (um) (for MOSAIC bulk mode only)
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:diam' )
+      READ( SUBSTRS(1:N), * ) Input_Opt%DRYDIAM
+
+      ! Use online sulfate aerosols 
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:2' )
       READ( SUBSTRS(1:N), * ) LSULF
 
       ! Use crystalline sulfate aerosols  
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:2' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:3' )
       READ( SUBSTRS(1:N), * ) LCRYST
 
       ! Use online carbon aerosols 
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:3' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:4' )
       READ( SUBSTRS(1:N), * ) LCARB
 
       ! Use secondary organic aerosols?
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:4' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:5' )
       READ( SUBSTRS(1:N), * ) LSOA
 
       ! SOAupdate: Add Semi-volatile POA switch (hotp 8/9/09)
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:5' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:6' )
       READ( SUBSTRS(1:N), * ) LSVPOA
 
       ! SOAupdate: Add NAP/IVOC surrogate emissions (hotp 8/9/09)
       ! SOAupdate: set NAP emissions (in Tg/yr)
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:6' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:7' )
       READ( SUBSTRS(1:N), * ) Input_Opt%NAPEMISS
 
       ! SOAupdate: Add scaling for POA emiss (hotp 9/21/09)
       ! Fractional scaling, recommended value: 1.27
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:7' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:8' )
       READ( SUBSTRS(1:N), * ) Input_Opt%POAEMISSSCALE
 
       ! Use online dust aerosols 
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:8' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:9' )
       READ( SUBSTRS(1:N), * ) LDUST
 
       ! Use DEAD dust mobilization (=T) or GINOUX (=F)
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:9' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:10' )
       READ( SUBSTRS(1:N), * ) LDEAD      
 
       ! Use online sea-salt aerosols?
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:10' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:11' )
       READ( SUBSTRS(1:N), * ) LSSALT      
 
       ! Accum mode seasalt radii bin edges [um]
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:11' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:12' )
       DO T = 1, N
          READ( SUBSTRS(T), * ) Input_Opt%SALA_REDGE_um(T)
       ENDDO
 
       ! Coarse mode seasalt radii bin edges [um]
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:12' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 2, 'read_aerosol_menu:13' )
       DO T = 1, N
          READ( SUBSTRS(T), * ) Input_Opt%SALC_REDGE_um(T)
       ENDDO
 
       ! Switch to comment the SOG condensation in carbon_mod.f (ccc, 3/10/09)
       ! Use online dicarbonyl chemistry 
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:13' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:14' )
       READ( SUBSTRS(1:N), * ) LDICARB
 
       ! Apply gravitational settling in stratosphere?
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:14' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:15' )
       READ( SUBSTRS(1:N), * ) LGRAVSTRAT  
 
       ! Use solid polar stratospheric clouds (PSCs)?
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:15' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:16' )
       READ( SUBSTRS(1:N), * ) LSOLIDPSC   
 
       ! PSC restart file name
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:15b' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:16b' )
       READ( SUBSTRS(1:N), '(a)' ) PSC_RST_FILE
 
       ! Allow homogeneous nucleation of NAT?
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:16' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:17' )
       READ( SUBSTRS(1:N), * ) LHOMNUCNAT 
 
       ! NAT supercooling requirement (K)
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:17' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:18' )
       READ( SUBSTRS(1:N), * ) T_NAT_SUPERCOOL
 
       ! Ice supersaturation ratio requirement
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:18' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:19' )
       READ( SUBSTRS(1:N), * ) P_ICE_SUPERSAT
 
       ! Perform PSC-related heterogeneous chemistry?
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:19' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:20' )
       READ( SUBSTRS(1:N), * ) LPSCCHEM 
 
       ! Include stratospheric aerosols optical depths?
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:20' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:21' )
       READ( SUBSTRS(1:N), * ) LSTRATOD
 
       ! Separator line
-      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:21' )
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:22' )
 
       !=================================================================
       ! Error checks
@@ -1794,6 +1810,63 @@
          LDEAD  = .FALSE.
          LSSALT = .FALSE.
          LSVPOA = .FALSE.
+      ENDIF
+
+#if defined( MOSAIC )
+      ! Ignore all options
+      IF ( .not. LMOSAIC ) THEN
+         MSG = 'LMOSAIC=F but code compiled with MOSAIC aerosols!'
+         CALL ERROR_STOP( MSG, LOCATION )
+      ENDIF
+
+      ! Check that we have the precursor tracers
+      IF ( IDTSO4==0 .or. IDTNH3==0 .or. IDTHNO3 == 0 .or. 
+     &                    IDTMSA == 0 .or. IDTHCl == 0 ) THEN
+         MSG = 'MOSAIC requires gas phase SO4, NH3, HNO3, MSA and HCl'
+         CALL ERROR_STOP( MSG, LOCATION )
+      ENDIF
+#if defined( MBULK )
+      I = 1
+      IF ( IDTaH2O(I)  == 0 .or.  
+     &     IDTaHyst(I) == 0 ) THEN
+         WRITE(MSG,'(a,I)') 'MOSAIC: Missing aerosol(s) in bin ', I
+         CALL ERROR_STOP( MSG, LOCATION )
+      ENDIF
+#else
+      LSULF  = .FALSE.
+      LCRYST = .FALSE.
+      LCARB  = .FALSE.
+      LSOA   = .FALSE.
+      LDUST  = .FALSE.
+      LDEAD  = .FALSE.
+      LSSALT = .FALSE.
+      LSVPOA = .FALSE.
+
+      ! Check that we have the aerosol tracers
+      DO I=1,NBINMOS
+          IF ( IDTaNUM(I)  == 0 .or.  
+     &         IDTaHyst(I) == 0 .or.
+     &         IDTaH2O(I)  == 0 .or.
+     &         IDTaSO4(I)  == 0 .or.
+     &         IDTaNO3(I)  == 0 .or.
+     &         IDTaNH4(I)  == 0 .or.
+     &         IDTaCl(I)   == 0 .or.
+     &         IDTaCO3(I)  == 0 .or.
+     &         IDTaMSA(I)  == 0 .or.
+     &         IDTaNa(I)   == 0 .or.
+     &         IDTaCa(I)   == 0 .or.
+     &         IDTaOC(I)   == 0 .or.
+     &         IDTaBC(I)   == 0 .or.
+     &         IDTaOIN(I)  == 0 ) THEN
+             WRITE(MSG,'(a,I)') 'MOSAIC: Missing aerosol(s) in bin ', I
+             CALL ERROR_STOP( MSG, LOCATION )
+          ENDIF
+      ENDDO
+#endif
+#else
+      IF ( LMOSAIC ) THEN
+         MSG = 'LMOSAIC=F but code compiled with MOSAIC aerosols!'
+         CALL ERROR_STOP( MSG, LOCATION )
       ENDIF
 
       !%%% The cryst/aq code is currently under development so make
@@ -1994,9 +2067,13 @@
          ENDIF
       ENDIF
 
+#endif
+      ! End of MOSAIC check
+
       !=================================================================
       ! Set fields of Input Options object
       !=================================================================
+      Input_Opt%LMOSAIC            = LMOSAIC  
       Input_Opt%LSULF              = LSULF  
       Input_Opt%LCRYST             = LCRYST
       Input_Opt%LCARB              = LCARB
@@ -2024,6 +2101,13 @@
       IF ( am_I_Root ) THEN
          WRITE( 6, '(/,a)' ) 'AEROSOL MENU'
          WRITE( 6, '(  a)' ) '------------'
+         WRITE( 6, 100     ) 'MOSAIC AEROSOLS?            : ', LMOSAIC
+#if defined( BULKMOS )
+         IF (LMOSAIC) THEN
+            WRITE( 6, 105     ) 'Bulk aero dry diameter [um] : ', 
+     &                           Input_Opt%DRYDIAM
+         ENDIF
+#endif
          WRITE( 6, 100     ) 'Online SULFATE AEROSOLS?    : ', LSULF
          WRITE( 6, 100     ) 'Online CRYST & AQ AEROSOLS? : ', LCRYST
          WRITE( 6, 100     ) 'Online CARBON AEROSOLS?     : ', LCARB

@@ -256,9 +256,11 @@ module_sect_iface.o:         module_coag.o  module_coag_3d.o  module_movesect.o 
 
 aerchemistry.o:              module_sect_iface.o  mosaic_box.25.o $(DATAMODU)
 
+aeroptical.o:                mosaic_box.25.o $(DATAMODU)
+
 module_pmcmos_init.o:        module_pmcmos_subaa.o module_mosaic_init.o $(DATAMODU)
 
-readinputfile.o:             module_pmcmos_init.o  $(DATAMODU)
+readinputfile.o:             module_sect_iface.o module_pmcmos_init.o  $(DATAMODU)
 
 ASTEM.o:	             module_mosaic_ext.o module_mosaic_support.o module_print_aer.o $(DATAMODU)
 

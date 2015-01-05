@@ -422,7 +422,8 @@ chemistry_mod.o             : chemistry_mod.F                                \
                               RnPbBe_mod.o            seasalt_mod.o          \
                               strat_chem_mod.o        sulfate_mod.o          \
                               tagged_co_mod.o         tagged_ox_mod.o        \
-                              tomas_mod.o             tracerid_mod.o
+                              tomas_mod.o             tracerid_mod.o         \
+                              mosaic_mod.o
 
 cleanup.o                   : cleanup.F                                      \
                               aerosol_mod.o                                  \

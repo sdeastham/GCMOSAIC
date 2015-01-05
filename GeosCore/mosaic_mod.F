@@ -31,6 +31,7 @@
       PRIVATE :: INIT_DATA_MODULES_INBUILT
       PRIVATE :: INIT_AEROSOL_INBUILT
       PRIVATE :: WATER_VAPOR
+      PRIVATE :: SO4_PARTITION
 !
 ! !REMARKS:
 !  Original Author:
@@ -162,7 +163,7 @@
 !
       USE CHEMGRID_MOD,       ONLY : ITS_IN_THE_STRATMESO
       USE CMN_SIZE_MOD
-      USE CMN_GCTM_MOD,       ONLY : AIRMW
+      USE CMN_GCTM_MOD,       ONLY : AIRMW, PI
       USE ERROR_MOD,          ONLY : DEBUG_MSG
       USE ERROR_MOD,          ONLY : ERROR_STOP
       USE ERROR_MOD,          ONLY : SAFE_DIV
@@ -179,6 +180,10 @@
       USE TRACERID_MOD,       ONLY : IDTHCl
       USE TRACERID_MOD,       ONLY : IDTNH3
       USE TRACERID_MOD,       ONLY : IDTMSA
+
+      ! Bulk only
+      USE TRACERID_MOD,       ONLY : IDTNH4, IDTNIT
+
       ! Aerosol species
       USE TRACERID_MOD,       ONLY : IDTaNUM,  IDTaHyst, IDTaH2O
       USE TRACERID_MOD,       ONLY : IDTaSO4,  IDTaNO3,  IDTaNH4
@@ -186,7 +191,9 @@
       USE TRACERID_MOD,       ONLY : IDTaNa,   IDTaCa,   IDTaOC
       USE TRACERID_MOD,       ONLY : IDTaBC,   IDTaOIN
       ! SOA not yet implemented
-
+      USE TRACERID_MOD,       ONLY : IDTaAro1, IDTaAro2, IDTaAlk1
+      USE TRACERID_MOD,       ONLY : IDTaOle1, IDTaApi1, IDTaApi2
+      USE TRACERID_MOD,       ONLY : IDTaLim1, IDTaLim2
       ! MOSAIC indexing
       use module_data_mosaic_main, only: r8,naer_tot,ngas_max, !Parameters
      &   ntot_max,avogad,kh2so4,khno3,khcl,knh3,kmsa,knum_a,piover6,
@@ -209,6 +216,8 @@
      &   pr_atm_old, RH_old, te_old, speed_molec, pblh, pblh_old,
      &   cair_mlc, cair_molm3, cair_mlc_old, cair_molm3_old, ppb
      
+      use module_data_mosaic_asect, only:
+     &    dcen_sect 
 
 !
 ! !INPUT PARAMETERS:
@@ -266,6 +275,12 @@
       INTEGER,DIMENSION(nbin_a_max) :: jaerosolstate
       REAL*8                   :: XNUMOL(Input_Opt%N_TRACERS)
       REAL*8                   :: TRACER_MW_KG(Input_Opt%N_TRACERS)
+      REAL*8                   :: TSO4, ASO4, GSO4
+      REAL*8                   :: DRYDIAM
+
+      ! Bulk calculation
+      REAL(r8)                 :: MOLSO4, MOLNH4, MOLNO3, MOLMSA
+      REAL(r8)                 :: MOLH, AVOGDIV, VOLDRY, P_hPa
                   
       ! Pointers
       ! We need to define local arrays to hold corresponding values 
@@ -290,6 +305,7 @@
       N_TRACERS   = Input_Opt%N_TRACERS
       XNUMOL      = Input_Opt%XNUMOL
       TRACER_MW_KG= Input_Opt%TRACER_MW_KG(1:N_TRACERS)
+      DRYDIAM     = Input_Opt%DRYDIAM
 
       ! Location string
       X = 'DO_MOSAIC (mosaic_mod.F)'
@@ -309,8 +325,9 @@
      &       CALL ERROR_STOP( 'Gas-phase HCl is undefined!', X)
          IF ( IDTMSA == 0 ) 
      &       CALL ERROR_STOP( 'Gas-phase MSA is undefined!', X)
- 
-         ! Check aerosol phase - only look at fiNa_al bin
+
+#if defined( MOSAIC) && !defined( MBULK ) 
+         ! Check aerosol phase - only look at final bin
          IF ( IDTaSO4(NBINMOS)  == 0 ) 
      &       CALL ERROR_STOP( 'Aerosol-phase SO4 is undefined!', X)
          IF ( IDTaNO3(NBINMOS)  == 0 ) 
@@ -321,8 +338,6 @@
      &       CALL ERROR_STOP( 'Aerosol-phase Cl is undefined!', X)
          IF ( IDTaCO3(NBINMOS)  == 0 ) 
      &       CALL ERROR_STOP( 'Aerosol-phase CO3 is undefined!', X)
-         IF ( IDTaMSA(NBINMOS)  == 0 ) 
-     &       CALL ERROR_STOP( 'Aerosol-phase MSA is undefined!', X)
          IF ( IDTaNa(NBINMOS)  == 0 ) 
      &       CALL ERROR_STOP( 'Aerosol-phase Na is undefined!', X)
          IF ( IDTaCa(NBINMOS)  == 0 ) 
@@ -333,14 +348,17 @@
      &       CALL ERROR_STOP( 'Aerosol-phase BC is undefined!', X)
          IF ( IDTaOIN(NBINMOS)  == 0 ) 
      &       CALL ERROR_STOP( 'Aerosol-phase OIN is undefined!', X)
-         IF ( IDTaH2O(NBINMOS)  == 0 ) 
-     &       CALL ERROR_STOP( 'Aerosol-phase H2O is undefined!', X)
          IF ( IDTaNUM(NBINMOS)  == 0 ) 
-
-         ! Aerosol data
      &       CALL ERROR_STOP( 'Number concentration is undefined!', X)
+         IF ( IDTaMSA(NBINMOS)  == 0 ) 
+     &       CALL ERROR_STOP( 'Aerosol-phase MSA is undefined!', X)
+#endif
+
+         ! Aerosol data necessary to both bulk and sectional
          IF ( IDTaHyst(NBINMOS)  == 0 ) 
      &       CALL ERROR_STOP( 'Hysteresis tracer is undefined!', X)
+         IF ( IDTaH2O(NBINMOS)  == 0 ) 
+     &       CALL ERROR_STOP( 'Aerosol-phase H2O is undefined!', X)
 
          ! Initialize arrays
          CALL INIT_MOSAIC
@@ -350,6 +368,14 @@
          ! Reset first-time flag
          FIRST = .FALSE. 
       ENDIF
+ 
+      !SDE DEBUG===============================
+      WRITE(6,*) 'SDE DEBUG - NTOT_MAX: ', ntot_max
+      WRITE(6,*) 'SDE DEBUG - CNN SIZE: ', SIZE(CNN)
+      !SDE DEBUG===============================
+
+      ! Factor needed for bulk calculation
+      AVOGDIV = 1.d0/AVOGADRO
      
       ! Initialize GEOS-Chem tracer array [kg] from Chemistry State object
       ! (mpayer, 12/6/12)
@@ -364,7 +390,9 @@
 !$OMP+PRIVATE( I,    J,      L,     N,                  VOL )
 !$OMP+PRIVATE(      NOFFSET,boxPerCm3,molecPerCm3,cmpConv  )
 !$OMP+PRIVATE( iter_MESA, aH2O_a, gam_ratio, jaerosolstate  )
-!$OMP+PRIVATE( dp_wet_a, cair_mol_m3, cair_mol_cc           )
+!$OMP+PRIVATE( dp_wet_a, cair_mol_m3, cair_mol_cc, TSO4     )
+!$OMP+PRIVATE( GSO4, ASO4, MOLSO4, MOLNH4, MOLNO3        )
+!$OMP+PRIVATE( MOLMSA, MOLH, VOLDRY, P_hPa                )
 !$OMP+SCHEDULE( DYNAMIC )
       DO L = 1, LLPAR
       DO J = 1, JJPAR
@@ -389,8 +417,8 @@
          RH       = State_Met%RH(I,J,L)   ! %
          te       = State_Met%T(I,J,L)    ! K
          te_old   = te                    ! K
-         pr_atm   = State_Met%PMID(I,J,L) ! hPa
-         pr_atm   = pr_atm * 9.86923267d-4! atm
+         P_hPa    = State_Met%PMID(I,J,L) ! hPa
+         pr_atm   = P_hPa * 9.86923267d-4! atm
          pr_atm_old= pr_atm
 
          ! Volume of grid box [m3] 
@@ -424,12 +452,73 @@
 
          ! STT is in kg
          ! MOSAIC wants molec/cm3
-         CNN(kh2so4)  = XNUMOL(IDTSO4)*boxPerCm3*STT(I,J,L,IDTSO4)
          CNN(khno3)   = XNUMOL(IDTHNO3)*boxPerCm3*STT(I,J,L,IDTHNO3)
          CNN(khcl)    = XNUMOL(IDTHCl)*boxPerCm3*STT(I,J,L,IDTHCl)
          CNN(knh3)    = XNUMOL(IDTNH3)*boxPerCm3*STT(I,J,L,IDTNH3)
-         CNN(kmsa)    = XNUMOL(IDTMSA)*boxPerCm3*STT(I,J,L,IDTMSA)
 
+#if defined( MBULK )
+         ! Assume that H2SO4 partitions according to Kulmala
+         TSO4 = STT(I,J,L,IDTSO4)
+         CALL SO4_PARTITION(TSO4,cair_mol_m3*VOL*AIRMW*1e3,P_hPa,te,
+     &                     ASO4,GSO4)
+         CNN(kh2so4) = XNUMOL(IDTSO4) * boxPerCm3 * GSO4
+
+         ! Assume no gas-phase MSA
+         CNN(kmsa) = 0d0
+
+         CNN(kwater_a+iso4_a) = ASO4 * cmpConv / TRACER_MW_KG(IDTSO4)
+         CNN(kwater_a+ino3_a) = STT(I,J,L,IDTNIT) * 
+     &              cmpConv / TRACER_MW_KG(IDTNIT)
+         CNN(kwater_a+iCl_a)  = 0d0 
+         CNN(kwater_a+iNH4_a) = STT(I,J,L,IDTNH4) * 
+     &              cmpConv / TRACER_MW_KG(IDTNH4)
+         CNN(kwater_a+iCO3_a) = 0d0 
+         CNN(kwater_a+iMSA_a) = STT(I,J,L,IDTMSA) * 
+     &              cmpConv / TRACER_MW_KG(IDTMSA)
+         CNN(kwater_a+iNa_a)  = 0d0
+         CNN(kwater_a+iCa_a)  = 0d0
+         CNN(kwater_a+iOC_a)  = 0d0
+         CNN(kwater_a+iBC_a)  = 0d0
+         CNN(kwater_a+iOIN_a) = 0d0
+
+         ! Calculate number directly for a 1-bin model
+         N = 1
+         
+         CNN(kdpdry_a) = DRYDIAM*1.d-4 ! Dry diameter in um - convert to cm
+
+         ! Estimate local number density of aerosol
+         ! This is probably inefficient but should be safe
+         MOLSO4 = CNN(kwater_a+iso4_a)*AVOGDIV
+         MOLNO3 = CNN(kwater_a+iNO3_a)*AVOGDIV
+         MOLNH4 = CNN(kwater_a+iNH4_a)*AVOGDIV
+         MOLMSA = CNN(kwater_a+iMSA_a)*AVOGDIV
+         MOLH   = (2*MOLSO4) + MOLNO3 + MOLMSA - MOLNH4
+
+         ! Assume a density of 1000 kg/m3 for H+ (ie MW/rho = 1)
+         ! Assuming 1800 kg/m3 density for SO4, NO3, NH4 and MSA
+         ! (same as used in MOSAIC)
+         ! VOLDRY is (cm3 aerosol)/(cm3 air)
+         VOLDRY = (MOLSO4*TRACER_MW_KG(IDTSO4)/1.8d3) +
+     &            (MOLNO3*TRACER_MW_KG(IDTNIT)/1.8d3) +
+     &            (MOLNH4*TRACER_MW_KG(IDTNH4)/1.8d3) +
+     &            (MOLMSA*TRACER_MW_KG(IDTMSA)/1.8d3) + 
+     &             MOLH
+
+         ! Number per cm3
+         CNN(knum_a) = 6.d0*VOLDRY/(PI*(DRYDIAM**3))
+         CNN(ksigmag_a) = 1.6d0     ! Geometric SD - not used
+         CNN(kwater_a) = STT(I,J,L,IDTaH2O(N))/VOL
+         ! Hysteresis
+         IF (mhyst_method == mhyst_uporlo_waterhyst) THEN
+            CNN(kjhyst_a) = STT(I,J,L,IDTaHyst(N))/VOL
+         ELSE
+            CNN(kjhyst_a) = 0d0
+         ENDIF
+
+#else
+         ! STT now stores only gas phase SO4 and MSA
+         CNN(kh2so4)  = XNUMOL(IDTSO4)*boxPerCm3*STT(I,J,L,IDTSO4)
+         CNN(kmsa)    = XNUMOL(IDTMSA)*boxPerCm3*STT(I,J,L,IDTMSA)
          DO N = 1, NBINMOS
             NOFFSET = ngas_max + naer_tot*(n - 1)
             ! #/cm3 from "kg" - convert to moles, then molecules
@@ -438,8 +527,8 @@
      &         TRACER_MW_KG(IDTaNUM(N))) * AVOGADRO * boxPerCm3
 
             ! These would be used in a modal representation
-            CNN(NOFFSET+kdpdry_a) = 0d0       ! Dry diameter in um
-            CNN(NOFFSET+ksigmag_a) = 0d0     ! Geometric SD
+            CNN(NOFFSET+kdpdry_a) = AERDRYDIAM(N) ! Dry diameter in um
+            CNN(NOFFSET+ksigmag_a) = 0d0       ! Geometric SD
 
             ! Aerosol water content (kg/m3 air)
             CNN(NOFFSET+kwater_a) = STT(I,J,L,IDTaH2O(N))/VOL
@@ -476,6 +565,7 @@
      &                 cmpConv / TRACER_MW_KG(IDTaOIN(N))
             ! SOA not yet implemented
          ENDDO
+#endif
 
          ! Run MOSAIC
             CALL aerchemistry(0, 0, dt_sec,                             !intent-ins
@@ -485,12 +575,29 @@
          ! Save data back into tracer array
          ! STT wants kg
          ! MOSAIC is in molec/cm3
-         STT(I,J,L,IDTSO4)  = CNN(kh2so4)/(boxPerCm3*XNUMOL(IDTSO4))
          STT(I,J,L,IDTHNO3) = CNN(kHNO3) /(boxPerCm3*XNUMOL(IDTHNO3))
          STT(I,J,L,IDTHCl)  = CNN(kHCl)  /(boxPerCm3*XNUMOL(IDTHCl))
          STT(I,J,L,IDTNH3)  = CNN(kNH3)  /(boxPerCm3*XNUMOL(IDTNH3))
-         STT(I,J,L,IDTMSA)  = CNN(kMSA)  /(boxPerCm3*XNUMOL(IDTMSA))
 
+#if defined( MBULK )
+         N = 1
+         ! Add together aerosol and gas-phase SO4
+         STT(I,J,L,IDTSO4)  = CNN(kh2so4)/(boxPerCm3*XNUMOL(IDTSO4)) + 
+     &     (CNN(kwater_a+iso4_a) * TRACER_MW_KG(IDTSO4) / cmpConv)
+
+         ! Add together aerosol and gas-phase MSA
+         STT(I,J,L,IDTMSA)  = CNN(kMSA)/(boxPerCm3*XNUMOL(IDTSO4)) + 
+     &     (CNN(kwater_a+iMSA_a) * TRACER_MW_KG(IDTMSA) / cmpConv)
+
+         ! Just 1 aerosol with a specified size
+         STT(I,J,L,IDTaH2O(N)) = CNN(kwater_a)*VOL
+         ! Hysteresis
+         IF (mhyst_method == mhyst_uporlo_waterhyst) THEN
+            STT(I,J,L,IDTaHyst(N)) = CNN(kjhyst_a)*VOL
+         ENDIF
+#else
+         STT(I,J,L,IDTMSA)  = CNN(kMSA)  /(boxPerCm3*XNUMOL(IDTMSA))
+         STT(I,J,L,IDTSO4)  = CNN(kh2so4)/(boxPerCm3*XNUMOL(IDTSO4))
          ! Reverse all previous conversions
          DO N = 1, NBINMOS
             NOFFSET = ngas_max + naer_tot*(n - 1)
@@ -527,6 +634,7 @@
      &                 TRACER_MW_KG(IDTaOIN(N)) / cmpConv
             ! SOA not yet implemented
          ENDDO
+#endif
    
       ENDDO
       ENDDO
@@ -619,6 +727,9 @@
 !
 ! !USES:
 !
+      use module_data_mosaic_main
+      use module_data_mosaic_aero
+      use module_data_mosaic_asect
 !
 ! !INPUT PARAMETERS:
 !
@@ -645,6 +756,72 @@
       !=================================================================
       ! CLEANUP_MOSAIC  begins here!
       !=================================================================
+
+      IF (ALLOCATED( lun_aer )) DEALLOCATE( lun_aer )
+      IF (ALLOCATED( lun_aer_status )) DEALLOCATE(lun_aer_status)
+
+      IF (ALLOCATED( aer_output )) DEALLOCATE(aer_output)
+
+      IF (ALLOCATED( species )) DEALLOCATE( species )
+
+      IF (ALLOCATED( cnn )) DEALLOCATE( cnn )
+
+      IF (ALLOCATED( emission )) DEALLOCATE( emission )
+
+      IF (ALLOCATED( nsize_aer )) DEALLOCATE( nsize_aer )
+      IF (ALLOCATED( ncomp_aer )) DEALLOCATE( ncomp_aer )
+      IF (ALLOCATED( ncomp_plustracer_aer )) 
+     &                     DEALLOCATE( ncomp_plustracer_aer)
+      IF (ALLOCATED( mastercompptr_aer )) DEALLOCATE( mastercompptr_aer)
+      IF (ALLOCATED( massptr_aer )) DEALLOCATE( massptr_aer )
+      
+      IF (ALLOCATED( waterptr_aer )) DEALLOCATE( waterptr_aer )
+      IF (ALLOCATED( hyswptr_aer )) DEALLOCATE( hyswptr_aer )
+      IF (ALLOCATED( numptr_aer )) DEALLOCATE( numptr_aer )
+      
+      IF (ALLOCATED( mprognum_aer )) DEALLOCATE( mprognum_aer )
+      
+      IF (ALLOCATED( ibin_of_isize_itype )) 
+     &                    DEALLOCATE(ibin_of_isize_itype)
+      IF (ALLOCATED( isize_of_ibin )) DEALLOCATE(isize_of_ibin)
+      IF (ALLOCATED( itype_of_ibin )) DEALLOCATE(itype_of_ibin)
+      IF (ALLOCATED( itype_of_itype_md1md2 ))
+     &                    DEALLOCATE( itype_of_itype_md1md2 )
+      IF (ALLOCATED( itype_md1_of_itype ))
+     &                    DEALLOCATE( itype_md1_of_itype )
+      IF (ALLOCATED( itype_md2_of_itype )) 
+     &                    DEALLOCATE( itype_md2_of_itype )
+      
+      IF (ALLOCATED( dens_aer )) DEALLOCATE( dens_aer )
+      IF (ALLOCATED( mw_aer )) DEALLOCATE( mw_aer )
+      IF (ALLOCATED( hygro_aer )) DEALLOCATE( hygro_aer )
+      
+      IF (ALLOCATED( volumcut_sect )) DEALLOCATE( volumcut_sect )
+      IF (ALLOCATED( volumcen_sect )) DEALLOCATE( volumcen_sect )
+      IF (ALLOCATED( volumlo_sect )) DEALLOCATE( volumlo_sect )
+      IF (ALLOCATED( volumhi_sect )) DEALLOCATE( volumhi_sect )
+      IF (ALLOCATED( dcut_sect )) DEALLOCATE( dcut_sect )
+      IF (ALLOCATED( dcen_sect )) DEALLOCATE( dcen_sect )
+      IF (ALLOCATED( dlo_sect )) DEALLOCATE( dlo_sect )
+      IF (ALLOCATED( dhi_sect )) DEALLOCATE( dhi_sect )
+      IF (ALLOCATED( sigmag_aer )) DEALLOCATE( sigmag_aer )
+      
+      IF (ALLOCATED( xcut_atype_md1 )) DEALLOCATE( xcut_atype_md1 )
+      IF (ALLOCATED( xcut_atype_md2 )) DEALLOCATE( xcut_atype_md2 )
+      
+      IF (ALLOCATED( name_aer )) DEALLOCATE( name_aer )
+      
+      IF (ALLOCATED( lptr_so4_aer )) DEALLOCATE( lptr_so4_aer )
+      IF (ALLOCATED( lptr_msa_aer )) DEALLOCATE( lptr_msa_aer )
+      IF (ALLOCATED( lptr_no3_aer )) DEALLOCATE( lptr_no3_aer )
+      IF (ALLOCATED( lptr_cl_aer )) DEALLOCATE( lptr_cl_aer )
+      IF (ALLOCATED( lptr_co3_aer )) DEALLOCATE( lptr_co3_aer )
+      IF (ALLOCATED( lptr_nh4_aer )) DEALLOCATE( lptr_nh4_aer )
+      IF (ALLOCATED( lptr_na_aer )) DEALLOCATE( lptr_na_aer )
+      IF (ALLOCATED( lptr_ca_aer )) DEALLOCATE( lptr_ca_aer )
+      IF (ALLOCATED( lptr_oin_aer )) DEALLOCATE( lptr_oin_aer )
+      IF (ALLOCATED( lptr_oc_aer )) DEALLOCATE( lptr_oc_aer )
+      IF (ALLOCATED( lptr_bc_aer )) DEALLOCATE( lptr_bc_aer )
 
       END SUBROUTINE CLEANUP_MOSAIC
 !EOC
@@ -749,8 +926,8 @@
       nsize_aer_tmp = 4
 #elif defined( MOSAIC8 )
       nsize_aer_tmp = 8
-#else
-      nsize_aer_tmp = 8
+#elif defined( MBULK )
+      nsize_aer_tmp = 1
 #endif
 
       ! Total number of bins
@@ -762,7 +939,7 @@
       !   3: Sectional
 #if defined( MOSAIC4 ) || defined( MOSAIC8 )
       msize_framework = msectional
-#else
+#elif defined( MBULK )
       msize_Framework = munstructured
 #endif
  
@@ -770,7 +947,7 @@
       method_bcfrac = 1
 
       ! This has to be either 11 or 12
-      method_kappa = 12
+      method_kappa = 11
 
       ! About line 125 of readinputfile.f90
       ! About line 16 of input file itself
@@ -794,9 +971,17 @@
  
       ! The total length of the "cnn" array 
       ntot_used = ngas_max + naer_max + ncld_tot*ncldbin_used
-
-      ! Allocate memory? This is a dummy routine in MOSAIC
+      ntot_max = ntot_used
+ 
+      ! Allocate memory
       !call mosaic_allocate_memory( 0 )
+      !call mosaic_allocate_memory_inbuilt( 0 ) 
+      call mosaic_allocate_memory_inbuilt(  ) 
+ 
+      !SDE DEBUG===============================
+      WRITE(6,*) 'SDE DEBUG - NTOT_MAX: ', ntot_max
+      WRITE(6,*) 'SDE DEBUG - CNN SIZE: ', SIZE(CNN)
+      !SDE DEBUG===============================
 
       ! Allocate memory for sectional interface
       call sect_iface_allocate_memory
@@ -808,11 +993,17 @@
       ! If set to 2, bin sizes are calculated and the initial dry diameter is stored
       ! for each bin into CNN. The bin EDGES are always calculated for a sectional
       ! framework, but the CNN array entry is only set if this is equal to 2.
-      maersize_init_flag1 = 2
+      if (msize_framework == munstructured) then
+          maersize_init_flag1 = 1
+      else
+          maersize_init_flag1 = 2
+      endif
+
+      ! Bin limits
       if (msize_framework == msectional) then
           ! Bin upper and lower limits in um
-          dlo_aersize_init = 1.d-2
-          dhi_aersize_init = 1.d1
+          dlo_aersize_init = 2.d-2
+          dhi_aersize_init = 3.2d-1
           !=========================================================================!
           ! Assume for the moment that we aren't using multidimensional             !
           ! sectional approach                                                      !
@@ -852,7 +1043,8 @@
           !end if ! (msectional_flag2 > 0)
           !=========================================================================!
       else
-         dlo_aersize_init = 0.0 ; dhi_aersize_init = 0.0
+         dlo_aersize_init = 0.0
+         dhi_aersize_init = 0.0
       end if ! (msize_framework == msectional)
 
       ! Set hysteresis method - use either 2 or 3 under normal circumstances
@@ -880,16 +1072,18 @@
       !     3: h2so4-h2o binary nuc. of wexler et al. (1994)
       !    11: empirical first  order boundary layer nucleation
       !    12: empirical second order boundary layer nucleation
+      ! This is not necessary for the bulk mode - gas/aerosol
+      ! partitioning is controlled separately
       mnewnuc_flag1 = 1
 
       ! Not currently used
       msectional_flag1 = 0
 
       ! If running in bulk mode...
-#if !(defined( MOSAIC4) || defined( MOSAIC8 ))
+#if defined( MBULK )
       ifreq_coag = 0
       mmovesect_flag1 = 0
-      mnewnuc_flag1 = 1
+      mnewnuc_flag1 = 0
       msectional_flag1 = 0
 #endif
 
@@ -1903,6 +2097,468 @@
       
       return
       end subroutine init_aerosol_inbuilt
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: mosaic_allocate_memory_inbuilt
+!
+! !DESCRIPTION: Subroutine MOSAIC\_ALLOCATE\_MEMORY\_INBUILT is copied
+!  directly from the original MOSAIC code of the same name.
+!\\
+!\\
+! !INTERFACE:
+!
+      SUBROUTINE mosaic_allocate_memory_inbuilt( initialize_flag )
+!
+! !USES:
+!
+      use module_data_mosaic_main
+      use module_data_mosaic_aero
+      use module_data_mosaic_asect
+!
+! !INPUT PARAMETERS:
+!
+      integer, intent(in), optional :: initialize_flag
+!
+! !REVISION HISTORY: 
+!  28 Dec 2014 - S. D. Eastham - Initial version
+!  05 Jan 2015 - S. D. Eastham - Modified for OpenMP
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !LOCAL VARIABLES:
+!
+
+      !=================================================================
+      ! MOSAIC_ALLOCATE_MEMORY_INBUILT begins here!
+      !=================================================================
+
+! allocate arrays whose dimensions are set at run time
+!
+! initialize them to zero when initialize_flag > 0 (or is not present)
+
+      allocate( lun_aer(naerbin) )
+      allocate( lun_aer_status(naerbin) )
+
+      allocate( aer_output(naerbin) )
+
+      allocate( species(ntot_max) )
+ 
+      allocate( cnn(ntot_max) )
+
+      allocate( emission(ntot_max), emit(ntot_max) )
+
+      !allocate( jaerosolstate(nbin_a_max) )
+      !allocate( jaerosolstate_bgn(nbin_a_max) )
+      !allocate( jphase(nbin_a_max) )
+      !allocate( jhyst_leg(nbin_a_max) )
+
+      !allocate( num_a(nbin_a_max) )
+      !allocate( Dpgn_a(nbin_a_max) )
+      !allocate( Dp_dry_a(nbin_a_max) )
+      !allocate( Dp_wet_a(nbin_a_max) )
+      !allocate( Dp_core_a(nbin_a_max) )
+      !allocate( area_dry_a(nbin_a_max) )
+      !allocate( area_wet_a(nbin_a_max) )
+      !allocate( mass_dry_salt(nbin_a_max) )
+      !allocate( mass_dry_a_bgn(nbin_a_max) )
+      !allocate( mass_dry_a(nbin_a_max) )
+      !allocate( mass_wet_a(nbin_a_max) )
+      !allocate( mass_soluble_a(nbin_a_max) )
+      !allocate( vol_dry_a(nbin_a_max) )
+      !allocate( vol_wet_a(nbin_a_max) )
+      !allocate( dens_dry_a_bgn(nbin_a_max) )
+      !allocate( dens_dry_a(nbin_a_max) )
+      !allocate( dens_wet_a(nbin_a_max) )
+      !allocate( sigmag_a(nbin_a_max) )
+      !allocate( water_a(nbin_a_max) )
+      !allocate( water_a_hyst(nbin_a_max) )
+      !allocate( water_a_up(nbin_a_max) )
+      !allocate( pH(nbin_a_max) )
+      !allocate( aer(naer,3,nbin_a_max) )
+      !allocate( aer_sum(3,nbin_a_max) )
+      !allocate( aer_percent(naer,3,nbin_a_max) )
+      !allocate( electrolyte(nelectrolyte,3,nbin_a_max) )
+      !allocate( electrolyte_sum(3,nbin_a_max) )
+      !allocate( epercent(nelectrolyte,3,nbin_a_max) )
+      !allocate( aH2O_a(nbin_a_max) )
+      !allocate( DpmV(nbin_a_max) )
+      !allocate( volume_a(nbin_a_max) )
+      !allocate( volume_bin(nbin_a_max) )
+      !allocate( kelvin(nbin_a_max) )
+      !allocate( kel(ngas_volatile,nbin_a_max) )
+      !allocate( ext_cross(nbin_a_max) )
+      !allocate( scat_cross(nbin_a_max) )
+      !allocate( asym_particle(nbin_a_max) )
+
+      !allocate( idry_case3a(nbin_a_max) )
+      !allocate( ieqblm_bin(nbin_a_max) )
+      !allocate( integrate(ngas_volatile,3,nbin_a_max) )
+
+      !allocate( Heff(ngas_volatile,nbin_a_max) )
+      !allocate( kg(ngas_volatile,nbin_a_max) )
+      !allocate( df_gas_s(ngas_volatile,nbin_a_max) )
+      !allocate( df_gas_l(ngas_volatile,nbin_a_max) )
+      !allocate( df_gas_o(ngas_volatile,nbin_a_max) )
+      !allocate( df_gas(ngas_volatile,nbin_a_max) )
+      !allocate( flux_s(ngas_volatile,nbin_a_max) )
+      !allocate( flux_l(ngas_volatile,nbin_a_max) )
+      !allocate( flux_o(ngas_volatile,nbin_a_max) )
+      !allocate( flux(ngas_volatile,nbin_a_max) )
+      !allocate( delta_nh3_max(nbin_a_max) )
+      !allocate( delta_hno3_max(nbin_a_max) )
+      !allocate( delta_hcl_max(nbin_a_max) )
+      !allocate( volatile_s(ngas_volatile,nbin_a_max) )
+      !allocate( phi_volatile_s(ngas_volatile,nbin_a_max) )
+      !allocate( phi_volatile_l(ngas_volatile,nbin_a_max) )
+      !allocate( phi_volatile_o(ngas_volatile,nbin_a_max) )
+      !allocate( h_s_i_m(ngas_volatile,nbin_a_max) )
+
+      !allocate( iter_MESA(nbin_a_max) )
+
+      !allocate( growth_factor(nbin_a_max) )
+      !allocate( MDRH(nbin_a_max) )
+      !allocate( sigma_soln(nbin_a_max) )
+
+      !allocate( ri_avg_a(nbin_a_max) )
+      !allocate( ri_shell_a(nbin_a_max) )
+      !allocate( ri_core_a(nbin_a_max) )
+
+      !allocate( mc(Ncation,nbin_a_max) )
+      !allocate( ma(Nanion,nbin_a_max) )
+      !allocate( gam(nelectrolyte,nbin_a_max) )
+      !allocate( gam_ratio(nbin_a_max) )
+      !allocate( activity(nelectrolyte,nbin_a_max) )
+
+
+      if (m_partmc_mosaic <= 0) then
+! following only used for mosaic box-model (not for partmc-mosaic)
+
+         allocate( nsize_aer( maxd_atype ) )
+         allocate( ncomp_aer( maxd_atype ) )
+         allocate( ncomp_plustracer_aer( maxd_atype ) )
+         allocate( mastercompptr_aer(maxd_acomp, maxd_atype) )
+         allocate( massptr_aer( maxd_acomp, maxd_asize, maxd_atype, 
+     &                                                 maxd_aphase ) )
+         
+         allocate( waterptr_aer( maxd_asize, maxd_atype ) )
+         allocate( hyswptr_aer( maxd_asize, maxd_atype ) )
+         allocate( numptr_aer( maxd_asize, maxd_atype, maxd_aphase ) )
+         
+         allocate( mprognum_aer(maxd_asize,maxd_atype,maxd_aphase) )
+         
+         allocate( ibin_of_isize_itype( maxd_asize, maxd_atype ) )
+         allocate( isize_of_ibin( nbin_a_max ) )
+         allocate( itype_of_ibin( nbin_a_max ) )
+         allocate( itype_of_itype_md1md2(maxd_atype_md1,maxd_atype_md2))
+         allocate( itype_md1_of_itype(maxd_atype) )
+         allocate( itype_md2_of_itype(maxd_atype) )
+         
+         allocate( dens_aer( maxd_acomp, maxd_atype ) )
+         allocate( mw_aer( maxd_acomp, maxd_atype ) )
+         allocate( hygro_aer( maxd_acomp, maxd_atype ) )
+         
+         allocate( volumcut_sect( 0:maxd_asize, maxd_atype ) )
+         allocate( volumcen_sect(   maxd_asize, maxd_atype ) )
+         allocate( volumlo_sect(    maxd_asize, maxd_atype ) )
+         allocate( volumhi_sect(    maxd_asize, maxd_atype ) )
+         allocate( dcut_sect( 0:maxd_asize, maxd_atype ) )
+         allocate( dcen_sect(   maxd_asize, maxd_atype ) )
+         allocate( dlo_sect(    maxd_asize, maxd_atype ) )
+         allocate( dhi_sect(    maxd_asize, maxd_atype ) )
+         allocate( sigmag_aer(maxd_asize, maxd_atype) )
+         
+         allocate( xcut_atype_md1( 0:maxd_atype_md1 ) )
+         allocate( xcut_atype_md2( 0:maxd_atype_md2 ) )
+         
+         allocate( name_aer( maxd_acomp, maxd_atype ) )
+         
+         allocate( lptr_so4_aer(maxd_asize, maxd_atype, maxd_aphase) )
+         allocate( lptr_msa_aer(maxd_asize, maxd_atype, maxd_aphase) )
+         allocate( lptr_no3_aer(maxd_asize, maxd_atype, maxd_aphase) )
+         allocate( lptr_cl_aer( maxd_asize, maxd_atype, maxd_aphase) )
+         allocate( lptr_co3_aer(maxd_asize, maxd_atype, maxd_aphase) )
+         allocate( lptr_nh4_aer(maxd_asize, maxd_atype, maxd_aphase) )
+         allocate( lptr_na_aer( maxd_asize, maxd_atype, maxd_aphase) )
+         allocate( lptr_ca_aer( maxd_asize, maxd_atype, maxd_aphase) )
+         allocate( lptr_oin_aer(maxd_asize, maxd_atype, maxd_aphase) )
+         allocate( lptr_oc_aer( maxd_asize, maxd_atype, maxd_aphase) )
+         allocate( lptr_bc_aer( maxd_asize, maxd_atype, maxd_aphase) )
+         
+      end if
+      
+      
+      if ( present( initialize_flag ) ) then
+         if (initialize_flag <= 0) return
+      end if
+      ! initialize the allocated arrays
+      
+      lun_aer = 0
+      lun_aer_status = 0
+      
+      aer_output = '???'
+
+      species = '???'
+
+      cnn = 0.0
+
+      emission = 0.0
+
+      !jaerosolstate = 0
+      !jaerosolstate_bgn = 0
+      !jphase = 0
+      !jhyst_leg = 0
+
+      !num_a = 0.0
+      !Dpgn_a = 0.0
+      !Dp_dry_a = 0.0
+      !Dp_wet_a = 0.0
+      !Dp_core_a = 0.0
+      !area_dry_a = 0.0
+      !area_wet_a = 0.0
+      !mass_dry_salt = 0.0
+      !mass_dry_a_bgn = 0.0
+      !mass_dry_a = 0.0
+      !mass_wet_a = 0.0
+      !mass_soluble_a = 0.0
+      !vol_dry_a = 0.0
+      !vol_wet_a = 0.0
+      !dens_dry_a_bgn = 0.0
+      !dens_dry_a = 0.0
+      !dens_wet_a = 0.0
+      !sigmag_a = 0.0
+      !water_a = 0.0
+      !water_a_hyst = 0.0
+      !water_a_up = 0.0
+      !pH = 0.0
+      !aer = 0.0
+      !aer_sum = 0.0
+      !aer_percent = 0.0
+      !electrolyte = 0.0
+      !electrolyte_sum = 0.0
+      !epercent = 0.0
+      !aH2O_a = 0.0
+      !DpmV = 0.0
+      !volume_a = 0.0
+      !volume_bin = 0.0
+      !kelvin = 0.0
+      !kel = 0.0
+      !ext_cross = 0.0
+      !scat_cross = 0.0
+      !asym_particle = 0.0
+
+      !idry_case3a = 0
+      !ieqblm_bin = 0
+      !integrate = 0
+
+      !Heff = 0.0
+      !kg = 0.0
+      !df_gas_s = 0.0
+      !df_gas_l = 0.0
+      !df_gas_o = 0.0
+      !df_gas = 0.0
+      !flux_s = 0.0
+      !flux_l = 0.0
+      !flux_o = 0.0
+      !flux = 0.0
+      !delta_nh3_max = 0.0
+      !delta_hno3_max = 0.0
+      !delta_hcl_max = 0.0
+      !volatile_s = 0.0
+      !phi_volatile_s = 0.0
+      !phi_volatile_l = 0.0
+      !phi_volatile_o = 0.0
+      !h_s_i_m = 0.0
+
+      !iter_MESA = 0
+
+      !growth_factor = 0.0
+      !MDRH = 0.0
+      !sigma_soln = 0.0
+
+      !ri_avg_a = ( 0.0, 0.0 )
+      !ri_shell_a = ( 0.0, 0.0 )
+      !ri_core_a = ( 0.0, 0.0 )
+
+      !mc = 0.0
+      !ma = 0.0
+      !gam = 0.0
+      !gam_ratio = 0.0
+      !activity = 0.0
+
+
+      if (m_partmc_mosaic <= 0) then
+! following only used for mosaic box-model (not for partmc-mosaic)
+
+      nsize_aer = 0
+      ncomp_aer = 0
+      ncomp_plustracer_aer = 0
+      mastercompptr_aer = 0
+      massptr_aer = 0
+
+      waterptr_aer = 0
+      hyswptr_aer = 0
+      numptr_aer = 0
+
+      mprognum_aer = 0
+
+      ibin_of_isize_itype = 0
+      isize_of_ibin = 0
+      itype_of_ibin = 0
+      itype_of_itype_md1md2 = 0
+      itype_md1_of_itype = 0
+      itype_md2_of_itype = 0
+
+      dens_aer = 0.0
+      mw_aer = 0.0
+      hygro_aer = 0.0
+
+      volumcut_sect = 0.0
+      volumcen_sect = 0.0
+      volumlo_sect = 0.0
+      volumhi_sect = 0.0
+      dcut_sect = 0.0
+      dcen_sect = 0.0
+      dlo_sect = 0.0
+      dhi_sect = 0.0
+      sigmag_aer = 0.0
+
+      xcut_atype_md1 = 0.0
+      xcut_atype_md2 = 0.0
+
+      name_aer = '???'
+
+      lptr_so4_aer = 0
+      lptr_msa_aer = 0
+      lptr_no3_aer = 0
+      lptr_cl_aer = 0
+      lptr_co3_aer = 0
+      lptr_nh4_aer = 0
+      lptr_na_aer = 0
+      lptr_ca_aer = 0
+      lptr_oin_aer = 0
+      lptr_oc_aer = 0
+      lptr_bc_aer = 0
+
+      end if
+
+
+      return
+      end subroutine mosaic_allocate_memory_inbuilt
+!EOC
+!------------------------------------------------------------------------------
+!                  GEOS-Chem Global Chemical Transport Model                  !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: calc_h2so4_gas
+!
+! !DESCRIPTION: Subroutine SO4\_PARTITION calculates the fraction of
+!  SO4 mass which can be considered to be gaseous H2SO4.
+!\\
+!\\
+! !INTERFACE:
+!
+      SUBROUTINE SO4_PARTITION( SO4KG,AIRMASS,PCENTER,TCENTER,
+     &                                         SO4AER,SO4GAS )
+!
+! !USES:
+!
+      USE CMN_GCTM_MOD,       ONLY : AIRMW
+      USE ERROR_MOD,          ONLY : IS_SAFE_DIV
+!
+! !INPUT PARAMETERS:
+!
+      REAL*8,INTENT(IN)  :: SO4KG   ! Total SO4 (kg)
+      REAL*8,INTENT(IN)  :: AIRMASS ! Total air (kg)
+      REAL*8,INTENT(IN)  :: PCENTER ! Pressure (hPa)?
+      REAL*8,INTENT(IN)  :: TCENTER ! Temperature (K)
+
+      REAL*8,INTENT(OUT) :: SO4AER  ! Aerosol SO4 (kg)
+      REAL*8,INTENT(OUT) :: SO4GAS  ! Gaseous SO4 (kg)
+!
+! !REVISION HISTORY: 
+!  11 Apr 2013 - S. D. Eastham - Initial version
+!  07 Feb 2014 - R. Yantosca   - Cosmetic changes
+!  14 Feb 2014 - R. Yantosca   - Changed parallel DO loop order to L-J-I,
+!                                which is the most efficient configuration
+!  21 Feb 2014 - M. Sulprizio  - Now pass Input_Opt, State_Met, and State_Chm
+!                                objects via the arg list
+!  08 Dec 2014 - S. D. Eastham - Converted to single-box model for MOSAIC
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !LOCAL VARIABLES:
+!
+      LOGICAL, SAVE      :: FIRST=.TRUE.
+      REAL*8,PARAMETER   :: GF_THRESHOLD = 0.0d0
+      REAL*8,PARAMETER   :: GF_RANGE     = 1.0d-8
+      REAL*8,PARAMETER   :: GF_DELTAHBYR = 10156.d0
+      REAL*8,PARAMETER   :: GF_T0        = 360.d0
+      REAL*8,PARAMETER   :: GF_TC        = 905.d0
+      REAL*8,SAVE        :: GF_LOGP0
+      REAL*8,SAVE        :: GF_BFACTOR
+      REAL*8,SAVE        :: GF_ATMCONV
+      REAL*8,SAVE        :: GF_INVT0
+      REAL*8             :: GF_INVT,GF_LOGPSULFATE,GF_CFACTOR
+      REAL*8             :: GF_AFACTOR
+      REAL*8             :: GF_PP,GF_PVAP,GF_DIFF
+
+      REAL*8             :: H2SO4SUM, INVAIR, AERFRAC 
+
+      !=================================================================
+      ! SO4_PARTITION begins here!
+      !=================================================================
+
+      IF (FIRST) THEN
+         FIRST = .FALSE.
+         ! Calculate H2SO4 gas phase prefactors
+         GF_INVT0 = 1.d0/GF_T0
+         GF_LOGP0 = (-1.d0*GF_DELTAHBYR*GF_INVT0) + 16.259d0
+         GF_BFACTOR = 0.38d0/(GF_TC - GF_T0)
+         GF_ATMCONV = LOG(101325.d0)
+      ENDIF
+
+      INVAIR  = AIRMW / AIRMASS
+      ! mol/mol
+      H2SO4SUM = SO4KG*INVAIR/96.d0
+      ! Use approximation from Kumala (1990)
+      GF_PP = H2SO4SUM*PCENTER
+      GF_INVT = 1./TCENTER
+      GF_CFACTOR = 1.d0+(LOG(GF_T0*GF_INVT))-(GF_T0*GF_INVT)
+      GF_LOGPSULFATE = GF_LOGP0 + (GF_DELTAHBYR*(GF_INVT0 -
+     &         GF_INVT + (GF_BFACTOR*GF_CFACTOR)))
+      GF_LOGPSULFATE = GF_LOGPSULFATE + GF_ATMCONV
+      GF_PVAP = 1.d-2 * EXP(GF_LOGPSULFATE)
+ 
+      GF_DIFF = GF_PP - GF_PVAP
+      IF (GF_DIFF .lt. 0d0) THEN
+         AERFRAC = 0.d0
+      ELSEIF (.not.IS_SAFE_DIV(GF_DIFF,GF_PVAP)) THEN
+         ! Hmm
+         AERFRAC = 0.d0
+      ELSE
+         AERFRAC = GF_DIFF/GF_PVAP
+      ENDIF
+
+!      GF_DIFF = (GF_PVAP+GF_THRESHOLD) - GF_PP
+!      IF (GF_DIFF .lt. 0d0) THEN
+!         AERFRAC = 1.d0
+!      ELSEIF (GF_DIFF .lt. GF_RANGE) THEN
+!         AERFRAC = 1.d0-(GF_DIFF/GF_RANGE)
+!      ELSE
+!         AERFRAC = 0d0
+!      ENDIF
+      SO4AER = AERFRAC*H2SO4SUM
+      SO4GAS = H2SO4SUM - SO4AER
+
+      END SUBROUTINE SO4_PARTITION
+!
 !EOC
 
       END MODULE MOSAIC_MOD

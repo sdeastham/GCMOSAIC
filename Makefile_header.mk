@@ -499,15 +499,15 @@ endif
 
 # %%%%% MOSAIC %%%%%
 REGEXP         :=(^[Yy]|^[Yy][Ee][Ss])
-ifeq ($(shell [[ "$(MOSAIC)" =~ $(REGEXP) ]] && echo true),true)
-USER_DEFS      += -DMOSAIC
+ifeq ($(shell [[ "$(MOSAIC_BULK)" =~ $(REGEXP) ]] && echo true),true)
+USER_DEFS      += -DMOSAIC -DMBULK
 endif
 
-ifeq ($(shell [[ "$(MOSAIC4)" =~ $(REGEXP) ]] && echo true),true)
+ifeq ($(shell [[ "$(MOSAIC4BIN)" =~ $(REGEXP) ]] && echo true),true)
 USER_DEFS      += -DMOSAIC -DMOSAIC4
 endif
 
-ifeq ($(shell [[ "$(MOSAIC8)" =~ $(REGEXP) ]] && echo true),true)
+ifeq ($(shell [[ "$(MOSAIC8BIN)" =~ $(REGEXP) ]] && echo true),true)
 USER_DEFS      += -DMOSAIC -DMOSAIC8
 endif
 

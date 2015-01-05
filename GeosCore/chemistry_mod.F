@@ -104,6 +104,7 @@
       USE HCN_CH3CN_MOD,      ONLY : CHEM_HCN_CH3CN
       USE ISOROPIAII_MOD,     ONLY : DO_ISOROPIAII
       USE MERCURY_MOD,        ONLY : CHEMMERCURY
+      USE MOSAIC_MOD,         ONLY : DO_MOSAIC
       USE OPTDEPTH_MOD,       ONLY : OPTDEPTH
       USE POPS_MOD,           ONLY : CHEMPOPS
       USE RnPbBe_MOD,         ONLY : CHEMRnPbBe
@@ -357,7 +358,11 @@
                ! Do aerosol thermodynamic equilibrium
                IF ( LSSALT ) THEN
 
-#if   !defined( NO_ISORROPIA )
+#if defined( MBULK )
+                  ! MOSAIC
+                  CALL DO_MOSAIC( am_I_Root,
+     &               Input_Opt, State_Met, State_Chm, RC )
+#elif   !defined( NO_ISORROPIA )
                   ! ISOROPIA takes Na+, Cl- into account
                   CALL DO_ISOROPIAII
      &               ( am_I_Root, Input_Opt, State_Met, State_Chm, RC )
@@ -372,6 +377,12 @@
                ENDIF
 
             ENDIF
+
+#if defined( MOSAIC ) && !defined( MBULK )
+            ! MOSAIC
+            CALL DO_MOSAIC( am_I_Root,
+     &         Input_Opt, State_Met, State_Chm, RC )
+#endif
 
             ! Do carbonaceous aerosol chemistry
             IF ( LCARB ) THEN

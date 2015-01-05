@@ -1574,11 +1574,20 @@
                COUNT     = COUNT+1
                IDTPOPPBC       = N
 
-#if   defined( MOSAIC )
             !-----------------------------------
             ! MOSAIC aerosol tracers
             ! (SDE 2014-11-13)
             !-----------------------------------
+#if   defined( MBULK )
+            CASE ( 'A1H2O' )
+               COUNT     = COUNT+1
+               IDTaH2O(1)      = N
+            CASE ( 'A1HYST' )
+               COUNT     = COUNT+1
+               IDTaHyst(1)     = N
+#endif
+
+#if   defined( MOSAIC4 ) || defined( MOSAIC8 )
             CASE ( 'A1NUM' )
                COUNT     = COUNT+1
                IDTaNUM(1)      = N
@@ -1843,6 +1852,8 @@
             CASE ( 'A4HYST' )
                COUNT     = COUNT+1
                IDTaHyst(4)     = N
+#endif
+#if defined( MOSAIC8 )
             CASE ( 'A5NUM' )
                COUNT     = COUNT+1
                IDTaNUM(5)      = N
