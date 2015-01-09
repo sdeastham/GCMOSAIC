@@ -3401,6 +3401,10 @@
      &                  JFIRST,    LFIRST,    ARRAY(:,:,1:LD45) )
 
          ENDDO
+
+         ! SDE 2015-01-09: Need to zero after write to prevent accumulation
+         AD45 = 0d0
+
       ENDIF
 
 #if   defined( APM )
