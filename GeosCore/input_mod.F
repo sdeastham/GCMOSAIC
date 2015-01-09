@@ -2102,7 +2102,7 @@
          WRITE( 6, '(/,a)' ) 'AEROSOL MENU'
          WRITE( 6, '(  a)' ) '------------'
          WRITE( 6, 100     ) 'MOSAIC AEROSOLS?            : ', LMOSAIC
-#if defined( BULKMOS )
+#if defined( MBULK )
          IF (LMOSAIC) THEN
             WRITE( 6, 105     ) 'Bulk aero dry diameter [um] : ', 
      &                           Input_Opt%DRYDIAM

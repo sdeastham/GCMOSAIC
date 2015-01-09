@@ -171,6 +171,7 @@
       USE GIGC_Input_Opt_Mod, ONLY : OptInput
       USE GIGC_State_Chm_Mod, ONLY : ChmState
       USE GIGC_State_Met_Mod, ONLY : MetState
+      USE PRESSURE_MOD,       ONLY : GET_PCENTER
       USE HCO_EMISLIST_MOD,   ONLY : HCO_GetPtr
       USE TIME_MOD,           ONLY : GET_MONTH
       USE TIME_MOD,           ONLY : ITS_A_NEW_MONTH
@@ -189,7 +190,7 @@
       USE TRACERID_MOD,       ONLY : IDTaSO4,  IDTaNO3,  IDTaNH4
       USE TRACERID_MOD,       ONLY : IDTaCl,   IDTaCO3,  IDTaMSA
       USE TRACERID_MOD,       ONLY : IDTaNa,   IDTaCa,   IDTaOC
-      USE TRACERID_MOD,       ONLY : IDTaBC,   IDTaOIN
+      USE TRACERID_MOD,       ONLY : IDTaBC,   IDTaOIN,  IDTSALA
       ! SOA not yet implemented
       USE TRACERID_MOD,       ONLY : IDTaAro1, IDTaAro2, IDTaAlk1
       USE TRACERID_MOD,       ONLY : IDTaOle1, IDTaApi1, IDTaApi2
@@ -197,7 +198,8 @@
       ! MOSAIC indexing
       use module_data_mosaic_main, only: r8,naer_tot,ngas_max, !Parameters
      &   ntot_max,avogad,kh2so4,khno3,khcl,knh3,kmsa,knum_a,piover6,
-     &   ksigmag_a,kjhyst_a,kwater_a,ntot_used,cnn,kdpdry_a,dt_sec
+     &   ksigmag_a,kjhyst_a,kwater_a,ntot_used,cnn,kdpdry_a,dt_sec,
+     &   species
 
       use module_data_mosaic_aero, only: nbin_a_max,naer,ngas_volatile,
      &   jtotal,nbin_a
@@ -217,7 +219,7 @@
      &   cair_mlc, cair_molm3, cair_mlc_old, cair_molm3_old, ppb
      
       use module_data_mosaic_asect, only:
-     &    dcen_sect 
+     &    dcen_sect, sigmag_aer 
 
 !
 ! !INPUT PARAMETERS:
@@ -287,8 +289,16 @@
       ! from the Chemistry State (State_Chm) object. (mpayer, 12/6/12)
       REAL*8, POINTER          :: STT(:,:,:,:)
 
+      ! Debug
+      INTEGER,PARAMETER        :: ITARG = 0 
+      INTEGER,PARAMETER        :: JTARG = 0 
+      INTEGER,PARAMETER        :: LTARG = 0
+
       ! For getting fields from HEMCO 
       LOGICAL                  :: aIR
+
+      ! If TRUE, sea salt is also handled in the bulk model
+      LOGICAL, PARAMETER       :: BULK_SS = .FALSE.
 
       !=================================================================
       ! DO_MOSAIC begins here!
@@ -326,7 +336,12 @@
          IF ( IDTMSA == 0 ) 
      &       CALL ERROR_STOP( 'Gas-phase MSA is undefined!', X)
 
-#if defined( MOSAIC) && !defined( MBULK ) 
+#if defined( MOSAIC) 
+#if defined( MBULK ) 
+         IF ( IDTSALA == 0 )
+     &       CALL ERROR_STOP( 'Seasalt is undefined!', X)
+   
+#else
          ! Check aerosol phase - only look at final bin
          IF ( IDTaSO4(NBINMOS)  == 0 ) 
      &       CALL ERROR_STOP( 'Aerosol-phase SO4 is undefined!', X)
@@ -353,6 +368,7 @@
          IF ( IDTaMSA(NBINMOS)  == 0 ) 
      &       CALL ERROR_STOP( 'Aerosol-phase MSA is undefined!', X)
 #endif
+#endif
 
          ! Aerosol data necessary to both bulk and sectional
          IF ( IDTaHyst(NBINMOS)  == 0 ) 
@@ -369,13 +385,8 @@
          FIRST = .FALSE. 
       ENDIF
  
-      !SDE DEBUG===============================
-      WRITE(6,*) 'SDE DEBUG - NTOT_MAX: ', ntot_max
-      WRITE(6,*) 'SDE DEBUG - CNN SIZE: ', SIZE(CNN)
-      !SDE DEBUG===============================
-
       ! Factor needed for bulk calculation
-      AVOGDIV = 1.d0/AVOGADRO
+!      AVOGDIV = 1.d0/AVOGADRO
      
       ! Initialize GEOS-Chem tracer array [kg] from Chemistry State object
       ! (mpayer, 12/6/12)
@@ -385,7 +396,7 @@
       ! Loop over grid boxes and call MOSAIC
       !=================================================================
 
-!$OMP PARALLEL DO
+!$OMP PARALLEL
 !$OMP+DEFAULT( SHARED )
 !$OMP+PRIVATE( I,    J,      L,     N,                  VOL )
 !$OMP+PRIVATE(      NOFFSET,boxPerCm3,molecPerCm3,cmpConv  )
@@ -393,6 +404,11 @@
 !$OMP+PRIVATE( dp_wet_a, cair_mol_m3, cair_mol_cc, TSO4     )
 !$OMP+PRIVATE( GSO4, ASO4, MOLSO4, MOLNH4, MOLNO3        )
 !$OMP+PRIVATE( MOLMSA, MOLH, VOLDRY, P_hPa                )
+
+      ! Memory allocation and initialization
+      allocate( cnn(ntot_max) )
+
+!$OMP DO
 !$OMP+SCHEDULE( DYNAMIC )
       DO L = 1, LLPAR
       DO J = 1, JJPAR
@@ -401,11 +417,15 @@
          ! Only applying MOSAIC in troposphere
          IF ( ITS_IN_THE_STRATMESO( I, J, L, State_Met ) ) THEN 
             ! TEMPORARY - Move all SO4 into gas-phase for UCX
+#if !defined( MBULK )
             DO N = 1,NBINMOS
-                STT(I,J,L,IDTSO4) = STT(I,J,L,IDTSO4) + 
-     &                              STT(I,J,L,IDTaSO4(N))
-                STT(I,J,L,IDTaSO4(N)) = 0.d0
+               IF (STT(I,J,L,IDTaSO4(N)) > 0) THEN
+                   STT(I,J,L,IDTSO4) = STT(I,J,L,IDTSO4) + 
+     &                                 STT(I,J,L,IDTaSO4(N))
+                   STT(I,J,L,IDTaSO4(N)) = 0.d0
+               ENDIF
             ENDDO
+#endif
             CYCLE
          ENDIF
 
@@ -417,9 +437,15 @@
          RH       = State_Met%RH(I,J,L)   ! %
          te       = State_Met%T(I,J,L)    ! K
          te_old   = te                    ! K
-         P_hPa    = State_Met%PMID(I,J,L) ! hPa
+!         P_hPa    = State_Met%PMID(I,J,L) ! hPa
+         P_hPa    = GET_PCENTER(I,J,L)
          pr_atm   = P_hPa * 9.86923267d-4! atm
          pr_atm_old= pr_atm
+
+!         ! DEBUG - Cycle if pressure < 200 hPa
+!         IF (P_hPa .lt. 200.d0) THEN
+!            CYCLE
+!         ENDIF
 
          ! Volume of grid box [m3] 
          VOL      = State_Met%AIRVOL(I,J,L)
@@ -427,12 +453,12 @@
          ! Conversion factors
          ! Gridboxes per cm3
          boxPerCm3   = (1.d-6/VOL)
-         cmpConv = 1.d9/VOL
+         cmpConv = 1.d6/VOL
 
          ! Set the MOSAIC air composition
          ! mol/m3
-         ! kg/m3 * (m3/cm3 * g/kg) * (mol/g)
-         cair_molm3 = State_Met%AIRDEN(L,I,J) * 1.d-3 
+         ! kg/m3 * (g/kg) * (mol/g)
+         cair_molm3 = State_Met%AIRDEN(L,I,J) * 1.d3
      &                            / AIRMW
          ! molec/cm3
          cair_mlc = 1.d-6*avogadro*cair_molm3
@@ -453,46 +479,56 @@
          ! STT is in kg
          ! MOSAIC wants molec/cm3
          CNN(khno3)   = XNUMOL(IDTHNO3)*boxPerCm3*STT(I,J,L,IDTHNO3)
-         CNN(khcl)    = XNUMOL(IDTHCl)*boxPerCm3*STT(I,J,L,IDTHCl)
          CNN(knh3)    = XNUMOL(IDTNH3)*boxPerCm3*STT(I,J,L,IDTNH3)
 
 #if defined( MBULK )
          ! Assume that H2SO4 partitions according to Kulmala
          TSO4 = STT(I,J,L,IDTSO4)
-         CALL SO4_PARTITION(TSO4,cair_mol_m3*VOL*AIRMW*1e3,P_hPa,te,
+         CALL SO4_PARTITION(TSO4,State_Met%AD(I,J,L),P_hPa,te,
      &                     ASO4,GSO4)
          CNN(kh2so4) = XNUMOL(IDTSO4) * boxPerCm3 * GSO4
 
          ! Assume no gas-phase MSA
          CNN(kmsa) = 0d0
 
-         CNN(kwater_a+iso4_a) = ASO4 * cmpConv / TRACER_MW_KG(IDTSO4)
-         CNN(kwater_a+ino3_a) = STT(I,J,L,IDTNIT) * 
+         ! Take seasalt as 30.61% by weight Na+ and 55.04% by weight Cl,
+         ! 1.16% by weight Ca2+ and ignore the rest (4.79%). At some point
+         ! should put this (K+ and Mg+) into "other inorganic"...
+
+         ! CNN aerosols should be umol/m3
+         noffset = ngas_max
+         CNN(noffset + kwater_a+iso4_a) = ASO4 * 
+     &              cmpConv / TRACER_MW_KG(IDTSO4)
+         CNN(noffset + kwater_a+ino3_a) = STT(I,J,L,IDTNIT) * 
      &              cmpConv / TRACER_MW_KG(IDTNIT)
-         CNN(kwater_a+iCl_a)  = 0d0 
-         CNN(kwater_a+iNH4_a) = STT(I,J,L,IDTNH4) * 
+         CNN(noffset + kwater_a+iNH4_a) = STT(I,J,L,IDTNH4) * 
      &              cmpConv / TRACER_MW_KG(IDTNH4)
-         CNN(kwater_a+iCO3_a) = 0d0 
-         CNN(kwater_a+iMSA_a) = STT(I,J,L,IDTMSA) * 
+         CNN(noffset + kwater_a+iMSA_a) = STT(I,J,L,IDTMSA) * 
      &              cmpConv / TRACER_MW_KG(IDTMSA)
-         CNN(kwater_a+iNa_a)  = 0d0
-         CNN(kwater_a+iCa_a)  = 0d0
-         CNN(kwater_a+iOC_a)  = 0d0
-         CNN(kwater_a+iBC_a)  = 0d0
-         CNN(kwater_a+iOIN_a) = 0d0
+
+         IF (BULK_SS) THEN
+            CNN(noffset + kwater_a+iNa_a)  = STT(I,J,L,IDTSALA) * 
+     &                 0.5504d0 * 1.d9 / ( 35.45d0  * VOL  )
+            CNN(noffset + kwater_a+iCa_a)  = STT(I,J,L,IDTSALA) * 
+     &                 0.0116d0 * 1.d9 / ( 40.08d0  * VOL  )
+            CNN(noffset + kwater_a+iCl_a)  = STT(I,J,L,IDTSALA) * 
+     &                 0.3061d0 * 1.d9 / ( 22.99d0  * VOL  )
+         ENDIF
 
          ! Calculate number directly for a 1-bin model
          N = 1
          
-         CNN(kdpdry_a) = DRYDIAM*1.d-4 ! Dry diameter in um - convert to cm
+         CNN(noffset + kdpdry_a) = DRYDIAM*1.d-4 ! Dry diameter in um - convert to cm
 
          ! Estimate local number density of aerosol
          ! This is probably inefficient but should be safe
-         MOLSO4 = CNN(kwater_a+iso4_a)*AVOGDIV
-         MOLNO3 = CNN(kwater_a+iNO3_a)*AVOGDIV
-         MOLNH4 = CNN(kwater_a+iNH4_a)*AVOGDIV
-         MOLMSA = CNN(kwater_a+iMSA_a)*AVOGDIV
+         ! MOLX = mol(x) per m3(air)
+         MOLSO4 = CNN(noffset + kwater_a+iso4_a)*1.d-6
+         MOLNO3 = CNN(noffset + kwater_a+iNO3_a)*1.d-6
+         MOLNH4 = CNN(noffset + kwater_a+iNH4_a)*1.d-6
+         MOLMSA = CNN(noffset + kwater_a+iMSA_a)*1.d-6
          MOLH   = (2*MOLSO4) + MOLNO3 + MOLMSA - MOLNH4
+         MOLH   = max(MOLH,0d0)
 
          ! Assume a density of 1000 kg/m3 for H+ (ie MW/rho = 1)
          ! Assuming 1800 kg/m3 density for SO4, NO3, NH4 and MSA
@@ -502,23 +538,58 @@
      &            (MOLNO3*TRACER_MW_KG(IDTNIT)/1.8d3) +
      &            (MOLNH4*TRACER_MW_KG(IDTNH4)/1.8d3) +
      &            (MOLMSA*TRACER_MW_KG(IDTMSA)/1.8d3) + 
-     &             MOLH
+     &            (MOLH/1.0d3)
 
          ! Number per cm3
-         CNN(knum_a) = 6.d0*VOLDRY/(PI*(DRYDIAM**3))
-         CNN(ksigmag_a) = 1.6d0     ! Geometric SD - not used
-         CNN(kwater_a) = STT(I,J,L,IDTaH2O(N))/VOL
+         CNN(noffset + knum_a) = 6.d0*VOLDRY/(PI*((DRYDIAM*1.d-4)**3))
+         !cnn(noffset + ksigmag_a) = sigmag_aer(1,1)
+         CNN(noffset + ksigmag_a) = 1.6d0     ! Geometric SD - not used
+         CNN(noffset + kwater_a) = STT(I,J,L,IDTaH2O(N))/VOL
          ! Hysteresis
          IF (mhyst_method == mhyst_uporlo_waterhyst) THEN
-            CNN(kjhyst_a) = STT(I,J,L,IDTaHyst(N))/VOL
+            CNN(noffset + kjhyst_a) = STT(I,J,L,IDTaHyst(N))/VOL
          ELSE
-            CNN(kjhyst_a) = 0d0
+            CNN(noffset + kjhyst_a) = 0d0
          ENDIF
+
+         !SDE DEBUG==================================================================
+         IF ((I.eq.ITARG).and.(J.eq.JTARG).and.(L.eq.LTARG)) THEN
+            WRITE(6,*) 'CNN SO4g pre MOSAIC:  ', CNN(kh2so4)
+            WRITE(6,*) 'CNN SO4a pre MOSAIC:  ', CNN(noffset + kwater_a+
+     &                                          iso4_a)
+            WRITE(6,*) 'RH (%):               ', RH
+            WRITE(6,*) 'CNN pre MOSAIC'
+            WRITE(6,*) '====================================='
+            DO N=1,NTOT_MAX
+               IF (trim(species(N)).ne."???") THEN
+                  WRITE(6,'(a,I03,x,a20,x,E10.4)') 
+     &                      'I/SPC/TOT:        ', 
+     &                      N,trim(species(N)),CNN(N)
+               ENDIF
+            ENDDO
+            WRITE(6,*) '====================================='
+            N = 1
+            WRITE(6,*) 'TOTALS pre MOSAIC'
+            WRITE(6,*) '====================================='
+            WRITE(6,*) 'STT aH2O:         ', STT(I,J,L,IDTaH2O(1))
+            WRITE(6,*) 'STT SO4:          ', STT(I,J,L,IDTSO4)
+            WRITE(6,*) 'STT TNO3 as NO3:  ', 
+     &           (STT(I,J,L,IDTHNO3)*62.d0/63.d0)+STT(I,J,L,IDTNIT)
+            WRITE(6,*) ' => HNO3 as NO3:  ', STT(I,J,L,IDTHNO3)*62.d0/63.d0
+            WRITE(6,*) ' => NIT:          ', STT(I,J,L,IDTNIT)
+            WRITE(6,*) 'STT TNH3 as NH3:  ', STT(I,J,L,IDTNH3) + 
+     &           (STT(I,J,L,IDTNH4)*17.d0/18.d0)
+            WRITE(6,*) ' => NH3:          ', STT(I,J,L,IDTNH3)
+            WRITE(6,*) ' => NH4 as NH3:   ', STT(I,J,L,IDTNH4)*17.d0/18.d0
+            WRITE(6,*) '====================================='
+         ENDIF
+         !SDE DEBUG==================================================================
 
 #else
          ! STT now stores only gas phase SO4 and MSA
          CNN(kh2so4)  = XNUMOL(IDTSO4)*boxPerCm3*STT(I,J,L,IDTSO4)
          CNN(kmsa)    = XNUMOL(IDTMSA)*boxPerCm3*STT(I,J,L,IDTMSA)
+         CNN(khcl)    = XNUMOL(IDTHCl)*boxPerCm3*STT(I,J,L,IDTHCl)
          DO N = 1, NBINMOS
             NOFFSET = ngas_max + naer_tot*(n - 1)
             ! #/cm3 from "kg" - convert to moles, then molecules
@@ -527,8 +598,10 @@
      &         TRACER_MW_KG(IDTaNUM(N))) * AVOGADRO * boxPerCm3
 
             ! These would be used in a modal representation
-            CNN(NOFFSET+kdpdry_a) = AERDRYDIAM(N) ! Dry diameter in um
-            CNN(NOFFSET+ksigmag_a) = 0d0       ! Geometric SD
+            cnn(noffset + kdpdry_a) = dcen_sect(N,1)*1.d4
+            cnn(noffset + ksigmag_a) = sigmag_aer(N,1)
+!            CNN(NOFFSET+kdpdry_a) = AERDRYDIAM(N) ! Dry diameter in um
+!            CNN(NOFFSET+ksigmag_a) = 0d0       ! Geometric SD
 
             ! Aerosol water content (kg/m3 air)
             CNN(NOFFSET+kwater_a) = STT(I,J,L,IDTaH2O(N))/VOL
@@ -540,7 +613,7 @@
                CNN(NOFFSET+kjhyst_a) = 0d0
             ENDIF
 
-            ! Aerosol components
+            ! Aerosol components (umol/m3)
             CNN(NOFFSET+kwater_a+iso4_a) = STT(I,J,L,IDTaSO4(N)) * 
      &                 cmpConv / TRACER_MW_KG(IDTaSO4(N))
             CNN(NOFFSET+kwater_a+ino3_a) = STT(I,J,L,IDTaNO3(N)) * 
@@ -568,7 +641,7 @@
 #endif
 
          ! Run MOSAIC
-            CALL aerchemistry(0, 0, dt_sec,                             !intent-ins
+            CALL aerchemistry(1, dt_sec, 0.d0,                        !intent-ins
      &       jaerosolstate, dp_wet_a,                                 !intent-inouts
      &       cair_mol_m3, cair_mol_cc, aH2O_a, gam_ratio, iter_MESA ) !intent-outs
 
@@ -576,28 +649,71 @@
          ! STT wants kg
          ! MOSAIC is in molec/cm3
          STT(I,J,L,IDTHNO3) = CNN(kHNO3) /(boxPerCm3*XNUMOL(IDTHNO3))
-         STT(I,J,L,IDTHCl)  = CNN(kHCl)  /(boxPerCm3*XNUMOL(IDTHCl))
          STT(I,J,L,IDTNH3)  = CNN(kNH3)  /(boxPerCm3*XNUMOL(IDTNH3))
 
 #if defined( MBULK )
          N = 1
          ! Add together aerosol and gas-phase SO4
          STT(I,J,L,IDTSO4)  = CNN(kh2so4)/(boxPerCm3*XNUMOL(IDTSO4)) + 
-     &     (CNN(kwater_a+iso4_a) * TRACER_MW_KG(IDTSO4) / cmpConv)
+     &     (CNN(noffset+kwater_a+iso4_a)*TRACER_MW_KG(IDTSO4)/cmpConv)
 
          ! Add together aerosol and gas-phase MSA
-         STT(I,J,L,IDTMSA)  = CNN(kMSA)/(boxPerCm3*XNUMOL(IDTSO4)) + 
-     &     (CNN(kwater_a+iMSA_a) * TRACER_MW_KG(IDTMSA) / cmpConv)
+         STT(I,J,L,IDTMSA)  = CNN(kMSA)/(boxPerCm3*XNUMOL(IDTMSA)) + 
+     &     (CNN(noffset+kwater_a+iMSA_a)*TRACER_MW_KG(IDTMSA)/cmpConv)
+
+         ! Return nitrate and ammonium to GEOS-Chem
+         STT(I,J,L,IDTNIT)  =  
+     &     (CNN(noffset+kwater_a+iNO3_a)*TRACER_MW_KG(IDTNIT)/cmpConv)
+
+         STT(I,J,L,IDTNH4)  =  
+     &     (CNN(noffset+kwater_a+iNH4_a)*TRACER_MW_KG(IDTNH4)/cmpConv)
 
          ! Just 1 aerosol with a specified size
-         STT(I,J,L,IDTaH2O(N)) = CNN(kwater_a)*VOL
+         STT(I,J,L,IDTaH2O(N)) = CNN(noffset+kwater_a)*VOL
+
          ! Hysteresis
          IF (mhyst_method == mhyst_uporlo_waterhyst) THEN
-            STT(I,J,L,IDTaHyst(N)) = CNN(kjhyst_a)*VOL
+            STT(I,J,L,IDTaHyst(N)) = CNN(noffset+kjhyst_a)*VOL
          ENDIF
+
+         !SDE DEBUG==================================================================
+         IF ((I.eq.ITARG).and.(J.eq.JTARG).and.(L.eq.LTARG)) THEN
+            WRITE(6,*) 'CNN SO4g post MOSAIC: ', CNN(kh2so4)
+            WRITE(6,*) 'CNN SO4a post MOSAIC: ', CNN(noffset + kwater_a+
+     &                                          iso4_a)
+            WRITE(6,*) 'JAEROSOLSTATE:        ', jaerosolstate(1)
+            WRITE(6,*) 'RH (%):               ', RH
+            WRITE(6,*) 'CNN post MOSAIC'
+            WRITE(6,*) '====================================='
+            DO N=1,NTOT_MAX
+               IF (trim(species(N)).ne."???") THEN
+                  WRITE(6,'(a,I03,x,a20,x,E10.4)') 
+     &                      'I/SPC/TOT:        ', 
+     &                      N,trim(species(N)),CNN(N)
+               ENDIF
+            ENDDO
+            WRITE(6,*) '====================================='
+            N = 1
+            WRITE(6,*) 'TOTALS post MOSAIC'
+            WRITE(6,*) '====================================='
+            WRITE(6,*) 'STT aH2O:         ', STT(I,J,L,IDTaH2O(1))
+            WRITE(6,*) 'STT SO4:          ', STT(I,J,L,IDTSO4)
+            WRITE(6,*) 'STT TNO3 as NO3:  ', 
+     &           (STT(I,J,L,IDTHNO3)*62.d0/63.d0)+STT(I,J,L,IDTNIT)
+            WRITE(6,*) ' => HNO3 as NO3:  ', STT(I,J,L,IDTHNO3)*62.d0/63.d0
+            WRITE(6,*) ' => NIT:          ', STT(I,J,L,IDTNIT)
+            WRITE(6,*) 'STT TNH3 as NH3:  ', STT(I,J,L,IDTNH3) + 
+     &           (STT(I,J,L,IDTNH4)*17.d0/18.d0)
+            WRITE(6,*) ' => NH3:          ', STT(I,J,L,IDTNH3)
+            WRITE(6,*) ' => NH4 as NH3:   ', STT(I,J,L,IDTNH4)*17.d0/18.d0
+            WRITE(6,*) '====================================='
+         ENDIF
+         !SDE DEBUG==================================================================
+
 #else
          STT(I,J,L,IDTMSA)  = CNN(kMSA)  /(boxPerCm3*XNUMOL(IDTMSA))
          STT(I,J,L,IDTSO4)  = CNN(kh2so4)/(boxPerCm3*XNUMOL(IDTSO4))
+         STT(I,J,L,IDTHCl)  = CNN(kHCl)  /(boxPerCm3*XNUMOL(IDTHCl))
          ! Reverse all previous conversions
          DO N = 1, NBINMOS
             NOFFSET = ngas_max + naer_tot*(n - 1)
@@ -639,7 +755,9 @@
       ENDDO
       ENDDO
       ENDDO 
-!$OMP END PARALLEL DO
+!$OMP END DO
+      if (allocated(cnn)) deallocate(cnn)
+!$OMP END PARALLEL
 
       ! Free pointer
       NULLIFY( STT )
@@ -900,7 +1018,7 @@
 
       ! Set the MOSAIC time step to match the chemistry time step
       dt_min = 1.d0*GET_TS_CHEM()
-      dt_sec = 60.*dt_min 
+      dt_sec = 60.d0*dt_min 
 
       ! Adapted from MOSAIC's "ReadInput"
       ! Not relevant to GEOS-Chem
@@ -978,11 +1096,6 @@
       !call mosaic_allocate_memory_inbuilt( 0 ) 
       call mosaic_allocate_memory_inbuilt(  ) 
  
-      !SDE DEBUG===============================
-      WRITE(6,*) 'SDE DEBUG - NTOT_MAX: ', ntot_max
-      WRITE(6,*) 'SDE DEBUG - CNN SIZE: ', SIZE(CNN)
-      !SDE DEBUG===============================
-
       ! Allocate memory for sectional interface
       call sect_iface_allocate_memory
  
@@ -1114,7 +1227,11 @@
       !    0: No shell/core
       !    1: Allow BC cores
       !    2: Allow BC and DUST cores
+#if defined( MBULK )
+      mshellcore = 0
+#else
       mshellcore = 1
+#endif
 
       ! Solar radiation pattern - not relevant to embedded aero model
       !    1: Diurnal pattern
@@ -1128,6 +1245,8 @@
 
       ! Allow gas-aerosol partitioning (0 is off, 1 is on)
       mGAS_AER_XFER = 1
+
+      mDYNAMIC_SOLVER = mASTEM
 
       ! ASTEM tolerances
       ! Tolerance for tau (solver tolerance)
@@ -1157,7 +1276,7 @@
       ! Set up the CNN array
       ! Only need gas-phase SO4, HNO3, NH3, HCl and MSA
       ! SOAs will complicate this
-      cnn(:) = 0.0_r8
+!      cnn(:) = 0.0_r8
       emission(:) = 0.0_r8
 
       species(kh2so4) = 'H2SO4'
@@ -1910,11 +2029,12 @@
                volumcut_sect(isize,itype) = volumhi_sect(isize,itype)
       
                ibin = ibin + 1
-               if (maersize_init_flag1 == 2) then
-                  noffset = ngas_max + naer_tot*(ibin - 1)
-                  ! cnn(noffset + kdpdry_a) is bin initial dry diameter (micron)
-                  cnn(noffset + kdpdry_a) = exp(tmpa + (isize-0.5)*tmpb)
-               end if
+               ! SDe 2015-01-05: Needed to move this into OMP clause
+!               if (maersize_init_flag1 == 2) then
+!                  noffset = ngas_max + naer_tot*(ibin - 1)
+!                  ! cnn(noffset + kdpdry_a) is bin initial dry diameter (micron)
+!                  cnn(noffset + kdpdry_a) = exp(tmpa + (isize-0.5)*tmpb)
+!               end if
             end do ! isize
       
             dcut_sect(0,itype) = dlo_sect(1,itype)
@@ -1929,7 +2049,7 @@
          do isize = 1, nsize_aer(itype)
             ibin = ibin_of_isize_itype(isize,itype)
             noffset = ngas_max + naer_tot*(ibin - 1)
-            sigmag_aer(isize,itype) = cnn(noffset + ksigmag_a)
+            !sigmag_aer(isize,itype) = cnn(noffset + ksigmag_a)
             if (msize_framework == munstructured ) then
                !           assume monodisperse for each "bin"
                sigmag_aer(isize,itype) = 1.0
@@ -1939,47 +2059,54 @@
                sigmag_aer(isize,itype) = 
      &              (dhi_sect(isize,itype)/dlo_sect(isize,itype))**0.289
             end if
-            cnn(noffset + ksigmag_a) = sigmag_aer(isize,itype)
+            ! SDE 2015-01-05: OMP prevents use of CNN outside loop
+            !cnn(noffset + ksigmag_a) = sigmag_aer(isize,itype)
          end do ! isize
       end do ! itype
       
-      
-      ! number
-      !    for modal or unstructured framework, the input file value should be used !BSINGH - 05/28/2013(RCE updates - Modified comment)
-      !    for sectional, initialize it correctly on the first time step
-      !*** this seems to work, but code should really be changed so that
-      !       aerosol number is initialized BEFORE the first time step
-      if (msize_framework == msectional) then !BSINGH - 05/28/2013(RCE updates)
-         do itype = 1, ntype_aer
-            do isize = 1, nsize_aer(itype)
-      !        cnn(numptr_aer(isize,itype,iphase)) = 0.0
-      ! 29-sep-2014 - only set number to zero here if
-      !     its value is negative, or
-      !     its value is below that obtained from dry-volume and volumhi_sect, or
-      !     its value is above that obtained from dry-volume and volumlo_sect
-               if (cnn(numptr_aer(isize,itype,iphase)) <= 0.0) then
-                  cnn(numptr_aer(isize,itype,iphase)) = 0.0
-               else
-                  tmpa = 0.0
-                  do ll = 1, ncomp_aer(itype)
-                     tmpa = tmpa 
-     &           + max(0.0_r8,cnn(massptr_aer(ll,isize,itype,iphase))) 
-     &           * 1.0e-12*mw_aer(ll,itype)/dens_aer(ll,itype)
-                     ! the 1.0e-12 factor converts cnn from umol/m3 to mol/cm3
-                     ! then tmpa is cm3-dry-aerosol/cm3-air
-                  end do
-                  tmpn = cnn(numptr_aer(isize,itype,iphase))
-                  tmpb = tmpa/volumlo_sect(isize,itype)
-                  tmpc = tmpa/volumhi_sect(isize,itype)
-                  if ( tmpn < 0.999*tmpc .or. tmpn > 1.001*tmpb ) then
-                     cnn(numptr_aer(isize,itype,iphase)) = 0.0
-                  end if
-               end if
-            end do ! isize
-         end do ! itype
-      endif!BSINGH - 05/28/2013(RCE updates)
-      
-      !BSINGH - 05/28/2013(RCE updates- Got rid of two do constructs here)
+     
+      !===================================================================================== 
+      ! SDE 2015-01-05: This can (?) be dispensed with in the GEOS-Chem framework
+      !===================================================================================== 
+!      ! number
+!      !    for modal or unstructured framework, the input file value should be used !BSINGH - 05/28/2013(RCE updates - Modified comment)
+!      !    for sectional, initialize it correctly on the first time step
+!      !*** this seems to work, but code should really be changed so that
+!      !       aerosol number is initialized BEFORE the first time step
+!      if (msize_framework == msectional) then !BSINGH - 05/28/2013(RCE updates)
+!         do itype = 1, ntype_aer
+!            do isize = 1, nsize_aer(itype)
+!      !        cnn(numptr_aer(isize,itype,iphase)) = 0.0
+!      ! 29-sep-2014 - only set number to zero here if
+!      !     its value is negative, or
+!      !     its value is below that obtained from dry-volume and volumhi_sect, or
+!      !     its value is above that obtained from dry-volume and volumlo_sect
+!               if (cnn(numptr_aer(isize,itype,iphase)) <= 0.0) then
+!                  cnn(numptr_aer(isize,itype,iphase)) = 0.0
+!               else
+!                  tmpa = 0.0
+!                  do ll = 1, ncomp_aer(itype)
+!                     tmpa = tmpa 
+!     &           + max(0.0_r8,cnn(massptr_aer(ll,isize,itype,iphase))) 
+!     &           * 1.0e-12*mw_aer(ll,itype)/dens_aer(ll,itype)
+!                     ! the 1.0e-12 factor converts cnn from umol/m3 to mol/cm3
+!                     ! then tmpa is cm3-dry-aerosol/cm3-air
+!                  end do
+!                  tmpn = cnn(numptr_aer(isize,itype,iphase))
+!                  tmpb = tmpa/volumlo_sect(isize,itype)
+!                  tmpc = tmpa/volumhi_sect(isize,itype)
+!                  if ( tmpn < 0.999*tmpc .or. tmpn > 1.001*tmpb ) then
+!                     cnn(numptr_aer(isize,itype,iphase)) = 0.0
+!                  end if
+!               end if
+!            end do ! isize
+!         end do ! itype
+!      endif!BSINGH - 05/28/2013(RCE updates)
+!      
+!      !BSINGH - 05/28/2013(RCE updates- Got rid of two do constructs here)
+      !===================================================================================== 
+      ! SDE 2015-01-05
+      !===================================================================================== 
       
       
       
@@ -2148,7 +2275,8 @@
 
       allocate( species(ntot_max) )
  
-      allocate( cnn(ntot_max) )
+      ! SDE 2015-01-05: Needs to be declared on each machine separately
+      !allocate( cnn(ntot_max) )
 
       allocate( emission(ntot_max), emit(ntot_max) )
 
@@ -2539,11 +2667,11 @@
       GF_DIFF = GF_PP - GF_PVAP
       IF (GF_DIFF .lt. 0d0) THEN
          AERFRAC = 0.d0
-      ELSEIF (.not.IS_SAFE_DIV(GF_DIFF,GF_PVAP)) THEN
+      ELSEIF (.not.IS_SAFE_DIV(GF_DIFF,GF_PP)) THEN
          ! Hmm
          AERFRAC = 0.d0
       ELSE
-         AERFRAC = GF_DIFF/GF_PVAP
+         AERFRAC = GF_DIFF/GF_PP
       ENDIF
 
 !      GF_DIFF = (GF_PVAP+GF_THRESHOLD) - GF_PP
@@ -2554,8 +2682,8 @@
 !      ELSE
 !         AERFRAC = 0d0
 !      ENDIF
-      SO4AER = AERFRAC*H2SO4SUM
-      SO4GAS = H2SO4SUM - SO4AER
+      SO4AER = AERFRAC * SO4KG
+      SO4GAS = SO4KG - SO4AER
 
       END SUBROUTINE SO4_PARTITION
 !
