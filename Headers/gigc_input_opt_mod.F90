@@ -104,6 +104,8 @@ MODULE GIGC_Input_Opt_Mod
      !----------------------------------------
      LOGICAL                     :: LMOSAIC
      REAL*8                      :: DRYDIAM
+     INTEGER                     :: MHYST
+     LOGICAL                     :: LMOSSS
      LOGICAL                     :: LSULF              
      LOGICAL                     :: LCRYST             
      LOGICAL                     :: LCARB              
@@ -825,6 +827,8 @@ CONTAINS
     
     Input_Opt%LMOSAIC                = .FALSE.
     Input_Opt%DRYDIAM                = 0.d0
+    Input_Opt%MHYST                  = 1
+    Input_Opt%LMOSSS                 = .FALSE.
     Input_Opt%LSULF                  = .FALSE.
     Input_Opt%LCRYST                 = .FALSE.
     Input_Opt%LCARB                  = .FALSE.

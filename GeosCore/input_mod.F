@@ -1667,6 +1667,8 @@
       LOGICAL            :: LSSALT,     LCRYST,     LDICARB
       LOGICAL            :: LGRAVSTRAT, LHOMNUCNAT, LSOLIDPSC
       LOGICAL            :: LPSCCHEM,   LSTRATOD,   LMOSAIC
+      INTEGER            :: MHYST
+      CHARACTER(LEN=10)  :: MHTYPE
       INTEGER            :: N,          T,          I 
       CHARACTER(LEN=255) :: MSG,        LOCATION,   PSC_RST_FILE
 
@@ -1690,9 +1692,17 @@
       CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:1' )
       READ( SUBSTRS(1:N), * ) LMOSAIC
 
+      ! MOSAIC hysteresis mode
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:hyst' )
+      READ( SUBSTRS(1:N), * ) Input_Opt%MHYST
+
       ! Aerosol mean dry diameter (um) (for MOSAIC bulk mode only)
       CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:diam' )
       READ( SUBSTRS(1:N), * ) Input_Opt%DRYDIAM
+
+      ! Include Na and Cl from SALA? (for MOSAIC bulk mode only)
+      CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:sala' )
+      READ( SUBSTRS(1:N), * ) Input_Opt%LMOSSS
 
       ! Use online sulfate aerosols 
       CALL SPLIT_ONE_LINE( SUBSTRS, N, 1, 'read_aerosol_menu:2' )
@@ -1825,11 +1835,44 @@
          MSG = 'MOSAIC requires gas phase SO4, NH3, HNO3, MSA and HCl'
          CALL ERROR_STOP( MSG, LOCATION )
       ENDIF
+
+      ! Check hysteresis mode
+      MHYST = Input_Opt%MHYST ! For convenience/readability
+      SELECT CASE (MHYST)
+         CASE (2)
+            MHTYPE = 'Dynamic'
+            MHYST = 1
+            DO I=1,NBINMOS
+               MHYST = MIN(MHYST,IDTaHYST(I))
+            ENDDO
+            IF (MHYST.lt.1) THEN
+               WRITE(MSG,'(a,a)') 'MOSAIC: Hysteresis tracer must ',
+     &                  'be defined for every aerosol bin'
+               CALL ERROR_STOP( MSG, LOCATION )
+            ENDIF
+            MHYST = 2 ! For safety's sake..
+         CASE (3)
+            MHTYPE = 'Force LOW'
+         CASE (4)
+            ! This should probably be prevented - not very physical
+            MHTYPE = 'Force HIGH'
+            WRITE( 6, '(a,a)' ) 'MOSAIC: Warning: ',
+     &            'Hysteresis mode 4 (FORCE HIGH) not recommended.'
+         CASE DEFAULT
+            ! Invalid
+            WRITE(MSG,'(a)') 'MOSAIC: Hysteresis mode must be 2-4'
+            CALL ERROR_STOP( MSG, LOCATION )
+      END SELECT
+          
+      
 #if defined( MBULK )
       I = 1
-      IF ( IDTaH2O(I)  == 0 .or.  
-     &     IDTaHyst(I) == 0 ) THEN
-         WRITE(MSG,'(a,I)') 'MOSAIC: Missing aerosol(s) in bin ', I
+      IF ( IDTaH2O(I)==0 ) THEN
+         WRITE(MSG,'(a,I)') 'MOSAIC: Missing aerosol water in bin ', I
+         CALL ERROR_STOP( MSG, LOCATION )
+      ENDIF
+      IF (( Input_Opt%LMOSSS ).and.((IDTSALA==0).or.(.not.LSSALT))) THEN
+         WRITE(MSG,'(a)') 'MOSAIC: Sea salt (acc mode) not defined'
          CALL ERROR_STOP( MSG, LOCATION )
       ENDIF
 #else
@@ -1845,7 +1888,6 @@
       ! Check that we have the aerosol tracers
       DO I=1,NBINMOS
           IF ( IDTaNUM(I)  == 0 .or.  
-     &         IDTaHyst(I) == 0 .or.
      &         IDTaH2O(I)  == 0 .or.
      &         IDTaSO4(I)  == 0 .or.
      &         IDTaNO3(I)  == 0 .or.
@@ -1865,9 +1907,12 @@
 #endif
 #else
       IF ( LMOSAIC ) THEN
-         MSG = 'LMOSAIC=F but code compiled with MOSAIC aerosols!'
+         MSG = 'LMOSAIC=T but code compiled without MOSAIC aerosols!'
          CALL ERROR_STOP( MSG, LOCATION )
       ENDIF
+
+#endif
+      ! End of MOSAIC check
 
       !%%% The cryst/aq code is currently under development so make
       !%%% sure that LCRYST = FALSE for now until further notice
@@ -2067,9 +2112,6 @@
          ENDIF
       ENDIF
 
-#endif
-      ! End of MOSAIC check
-
       !=================================================================
       ! Set fields of Input Options object
       !=================================================================
@@ -2102,11 +2144,15 @@
          WRITE( 6, '(/,a)' ) 'AEROSOL MENU'
          WRITE( 6, '(  a)' ) '------------'
          WRITE( 6, 100     ) 'MOSAIC AEROSOLS?            : ', LMOSAIC
+#if defined( MOSAIC )
 #if defined( MBULK )
-         IF (LMOSAIC) THEN
-            WRITE( 6, 105     ) 'Bulk aero dry diameter [um] : ', 
-     &                           Input_Opt%DRYDIAM
-         ENDIF
+         WRITE( 6, 105     ) ' ==> Aero dry diameter [um] : ', 
+     &                        Input_Opt%DRYDIAM
+         WRITE( 6, 100     ) ' ==> Include sea salt?      : ', 
+     &                        Input_Opt%LMOSSS
+#endif
+         WRITE( 6, 130     ) ' ==> Hysteresis mode        : ', 
+     &                        TRIM(MHTYPE)
 #endif
          WRITE( 6, 100     ) 'Online SULFATE AEROSOLS?    : ', LSULF
          WRITE( 6, 100     ) 'Online CRYST & AQ AEROSOLS? : ', LCRYST

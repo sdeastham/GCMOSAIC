@@ -298,7 +298,7 @@
       LOGICAL                  :: aIR
 
       ! If TRUE, sea salt is also handled in the bulk model
-      LOGICAL, PARAMETER       :: BULK_SS = .FALSE.
+      LOGICAL, SAVE            :: BULK_SS
 
       !=================================================================
       ! DO_MOSAIC begins here!
@@ -338,10 +338,14 @@
 
 #if defined( MOSAIC) 
 #if defined( MBULK ) 
-         IF ( IDTSALA == 0 )
-     &       CALL ERROR_STOP( 'Seasalt is undefined!', X)
-   
+         ! If in bulk mode, do we include sea salt?
+         BULK_SS = Input_Opt%LMOSSS
+
+         IF (( IDTSALA == 0 ).and.BULK_SS)
+     &       CALL ERROR_STOP( 'Seasalt is undefined!', X) 
 #else
+         ! Not that it matters, but..
+         BULK_SS = .TRUE.
          ! Check aerosol phase - only look at final bin
          IF ( IDTaSO4(NBINMOS)  == 0 ) 
      &       CALL ERROR_STOP( 'Aerosol-phase SO4 is undefined!', X)
@@ -377,7 +381,7 @@
      &       CALL ERROR_STOP( 'Aerosol-phase H2O is undefined!', X)
 
          ! Initialize arrays
-         CALL INIT_MOSAIC
+         CALL INIT_MOSAIC(Input_Opt)
 
          ppb = 1.d9
 
@@ -435,6 +439,13 @@
 
          ! Set MOSAIC variables
          RH       = State_Met%RH(I,J,L)   ! %
+
+         ! ASTEM struggles at 100% RH
+         ! Impose same limits as used by ISORROPIA II
+         ! Force 1% <= RH <= 98%
+         RH       = MAX(  1.0d0, RH )
+         RH       = MIN( 98.0d0, RH )
+
          te       = State_Met%T(I,J,L)    ! K
          te_old   = te                    ! K
 !         P_hPa    = State_Met%PMID(I,J,L) ! hPa
@@ -956,10 +967,12 @@
 !\\
 ! !INTERFACE:
 !
-      SUBROUTINE INIT_MOSAIC
+      SUBROUTINE INIT_MOSAIC( Input_Opt ) 
 !
 ! !USES:
 !
+      USE GIGC_Input_Opt_Mod, ONLY : OptInput
+
       use module_data_mosaic_main
       use module_data_mosaic_gas
       use module_data_mosaic_aero
@@ -984,6 +997,7 @@
 !
 ! !INPUT PARAMETERS:
 !
+      TYPE(OptInput), INTENT(IN)    :: Input_Opt   ! Input Options object
 !
 ! !INPUT/OUTPUT PARAMETERS: 
 !
@@ -1165,7 +1179,8 @@
       !    2: Full hysteresis with HYST tracer (Expensive, untested but acc.)
       !    3: Upper hysteresis leg only (Cheaper, mostly accurate)
       !    4: Lower hysteresis leg onl (Expensive, probably unrealistic)
-      mhyst_method = mhyst_uporlo_waterhyst ! 2
+      !mhyst_method = mhyst_uporlo_waterhyst ! 2
+      mhyst_method = Input_Opt%MHYST
 
       ! NOW AT LINE 18 OF CASE1.INP, LINE 201 OF READINPUTFILE.F90
       ! These flags are all relevant only to sectional representation
